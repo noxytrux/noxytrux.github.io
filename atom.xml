@@ -4,7 +4,7 @@
   <title><![CDATA[Marcin Pędzimąż]]></title>
   <link href="http://noxytrux.github.io/atom.xml" rel="self"/>
   <link href="http://noxytrux.github.io/"/>
-  <updated>2014-09-16T18:22:04+02:00</updated>
+  <updated>2014-09-16T22:44:27+02:00</updated>
   <id>http://noxytrux.github.io/</id>
   <author>
     <name><![CDATA[Marcin Pędzimąż]]></name>
@@ -12,5 +12,711 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Efficient particle system using OpenglES2.0]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/09/16/efficient-particle-system-using-opengles2-dot-0/"/>
+    <updated>2014-09-16T18:47:35+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/09/16/efficient-particle-system-using-opengles2-dot-0</id>
+    <content type="html"><![CDATA[<p>My first blog post, wow it took me a while to force myself to do that. If you are tired of digging in docs and stackoverflow it&#8217;a a good place to read.</p>
+
+<p>Particles are the most wanted things in games, every good game need some nice and fast particle system on board. Most of people know that good particle system require tons of particles to be processed. Today i&rsquo;m gonna show you not how to implement master piece class to manage particles but how to implement simple and most important fast particle system on GPU for your own OpenGL game.</p>
+
+<!--more-->
+
+
+<p>More particles you have, better they look. This could be easy to say on PC but when it comes to Mobile device every instruction counts&hellip; So we need few things to get this work:</p>
+
+<p>1) Simple data struct to keep our buffers updated <br/>
+2) Most of calculations need to be done on GPU so, yeah GLSL <br/>
+3) Possible to modify size, color, rotation, fade etc.   <br/>
+4) Point spites</p>
+
+<p>if we do it right effects will be amazing!</p>
+
+<p><img class="center" src="http://noxytrux.github.io/assets/images/particle.gif" width="800" height="600"></p>
+
+<p>So first we need some arrays to keep our GPU buffers up to date:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='cpp'><span class='line'><span class="k">const</span> <span class="kt">int</span> <span class="n">kMaxParticleSize</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">;</span> <span class="c1">//our particle emmiter limit</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">float</span> <span class="n">SparcleVertex</span> <span class="p">[</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">kMaxParticleSize</span> <span class="p">]</span> <span class="p">,</span> <span class="o">*</span> <span class="n">pSparcleVertex</span><span class="p">;</span> <span class="c1">// 3 coz xyz</span>
+</span><span class='line'><span class="kt">float</span> <span class="n">SparcleColor</span> <span class="p">[</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">kMaxParticleSize</span> <span class="p">]</span> <span class="p">,</span> <span class="o">*</span> <span class="n">pSparcleColor</span><span class="p">;</span> <span class="c1">// 4 coz rgba</span>
+</span><span class='line'><span class="kt">float</span> <span class="n">SparcleRotation</span> <span class="p">[</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">kMaxParticleSize</span> <span class="p">]</span> <span class="p">,</span> <span class="o">*</span> <span class="n">pSparcleRotation</span><span class="p">;</span> <span class="c1">// sin(angle) cos(angle) fadevalue</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now it is time to implement our Sparke class</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+</pre></td><td class='code'><pre><code class='cpp'><span class='line'><span class="k">class</span> <span class="nc">Sparcle</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'><span class="k">public</span><span class="o">:</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">3</span> <span class="p">];</span> <span class="c1">// position</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">3</span> <span class="p">];</span> <span class="c1">// acceleration</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">Wind</span><span class="p">[</span> <span class="mi">3</span> <span class="p">];</span> <span class="c1">// wind direction</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">Time</span><span class="p">;</span> <span class="c1">// life time</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">MaxTime</span><span class="p">;</span> <span class="c1">// max life time</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">gravity</span><span class="p">;</span> <span class="c1">// gravity </span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">h</span><span class="p">;</span> <span class="c1">// saved impact height (height at sparcle hit floor)</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">color</span><span class="p">[</span> <span class="mi">4</span> <span class="p">];</span> <span class="c1">//sparce color</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">angle</span><span class="p">;</span> <span class="c1">//current rotation angle </span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">random</span><span class="p">;</span> <span class="c1">//random seed so each particle do not start at same angle</span>
+</span><span class='line'>    <span class="kt">bool</span> <span class="n">rotated</span><span class="p">;</span> <span class="c1">//do we rotate sparcle at each frame</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">Sparcle</span><span class="p">(</span><span class="kt">bool</span> <span class="n">isRotated</span> <span class="o">=</span> <span class="nb">true</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">rotated</span> <span class="o">=</span> <span class="n">isRotated</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">Time</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">gravity</span> <span class="o">=</span> <span class="o">-</span><span class="mi">10</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">angle</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">random</span> <span class="o">=</span> <span class="n">rotated</span> <span class="o">?</span> <span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">64</span> <span class="o">:</span> <span class="p">((</span><span class="kt">float</span><span class="p">)(</span><span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">360</span><span class="p">)</span> <span class="o">*</span> <span class="n">M_PI</span> <span class="o">/</span> <span class="mf">180.0</span><span class="p">);</span> <span class="c1">//put some random angle at start</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// simulate, bool indicated whatever remove this sparcle or not</span>
+</span><span class='line'>    <span class="kt">bool</span> <span class="n">Simulate</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">Time</span> <span class="o">+=</span> <span class="n">globalDT</span><span class="p">;</span> <span class="c1">//you may want to pass delta time as parameter</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span> <span class="n">Time</span> <span class="o">&gt;</span> <span class="n">MaxTime</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="c1">//our sparcle died remove it from queue</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//calcualte alpha 0.0-1.0</span>
+</span><span class='line'>        <span class="kt">float</span> <span class="n">k</span> <span class="o">=</span> <span class="n">Time</span> <span class="o">/</span> <span class="n">MaxTime</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//update position</span>
+</span><span class='line'>        <span class="n">Pos</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="o">+=</span> <span class="p">(</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="o">+</span> <span class="n">Wind</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="p">)</span> <span class="o">*</span> <span class="n">globalDT</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">Pos</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">+=</span> <span class="p">(</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">+</span> <span class="n">Wind</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="p">)</span> <span class="o">*</span> <span class="n">globalDT</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">Pos</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="o">+=</span> <span class="p">(</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="o">+</span> <span class="n">Wind</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="p">)</span> <span class="o">*</span> <span class="n">globalDT</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">Acc</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">+=</span> <span class="n">gravity</span> <span class="o">*</span> <span class="n">globalDT</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span><span class="o">*</span><span class="n">Acc</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="o">+</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span><span class="o">*</span><span class="n">Acc</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.08f</span> <span class="p">)</span> <span class="c1">// update particle height if acceleration is big enought</span>
+</span><span class='line'>            <span class="n">h</span> <span class="o">=</span> <span class="n">GetHeight</span><span class="p">(</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="p">,</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span><span class="p">(</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">&lt;</span> <span class="n">h</span> <span class="o">&amp;&amp;</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">&lt;</span> <span class="o">-</span><span class="mf">0.05f</span> <span class="p">)</span> <span class="c1">// if particle is falling and hit floor</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>          <span class="c1">//calculate reflect vector </span>
+</span><span class='line'>            <span class="n">Pos</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">=</span> <span class="n">h</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">Vector3f</span> <span class="nf">in</span><span class="p">(</span> <span class="n">Acc</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">length</span> <span class="o">=</span> <span class="n">in</span> <span class="p">.</span> <span class="n">length</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">in</span> <span class="o">/=</span> <span class="n">length</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">Vector3f</span> <span class="nf">norm</span><span class="p">(</span> <span class="n">GetNormal</span><span class="p">(</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="p">,</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="p">)</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">Vector3f</span> <span class="n">out</span> <span class="o">=</span> <span class="n">Reflect</span><span class="p">(</span> <span class="n">in</span> <span class="p">,</span> <span class="n">norm</span> <span class="p">);</span> <span class="c1">// bounce particle</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">out</span> <span class="o">*=</span> <span class="n">length</span> <span class="o">*</span> <span class="mf">0.3</span><span class="p">;</span> <span class="c1">//damping </span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">memcpy</span><span class="p">(</span> <span class="n">Acc</span> <span class="p">,</span> <span class="o">&amp;</span><span class="n">out</span> <span class="p">,</span> <span class="mi">12</span> <span class="p">);</span> <span class="c1">//3 * sizeof(float)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">angle</span> <span class="o">=</span> <span class="n">rotated</span> <span class="o">?</span> <span class="p">(</span><span class="n">Time</span> <span class="o">+</span> <span class="n">random</span><span class="p">)</span> <span class="o">:</span>  <span class="n">random</span> <span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">color</span><span class="p">[</span> <span class="mi">3</span> <span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">fast_absf</span><span class="p">(</span> <span class="n">k</span> <span class="o">*</span> <span class="mf">2.0</span> <span class="o">-</span> <span class="mf">1.0</span> <span class="p">);</span> <span class="c1">//fade out </span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">// im using simple iOS OpenglES 2.0 with premultiplied alpha so this may vary on platform</span>
+</span><span class='line'>        <span class="kt">float</span> <span class="n">c</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="n">color</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">color</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">color</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">color</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">color</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">*</span> <span class="n">color</span><span class="p">[</span><span class="mi">3</span><span class="p">],</span> <span class="n">color</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kt">float</span> <span class="n">r</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span> <span class="n">sinf</span><span class="p">(</span> <span class="n">angle</span> <span class="p">),</span> <span class="n">cosf</span><span class="p">(</span> <span class="n">angle</span> <span class="p">),</span> <span class="p">(</span><span class="mf">1.0f</span><span class="o">-</span><span class="n">k</span><span class="p">)</span> <span class="p">};</span> <span class="c1">//3rd value is used to specify particle size at given life time</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//update our buffers </span>
+</span><span class='line'>        <span class="n">memcpy</span><span class="p">(</span> <span class="n">pSparcleVertex</span> <span class="p">,</span> <span class="n">Pos</span> <span class="p">,</span> <span class="mi">12</span> <span class="p">);</span> <span class="n">pSparcleVertex</span> <span class="o">+=</span> <span class="mi">3</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">memcpy</span><span class="p">(</span> <span class="n">pSparcleColor</span> <span class="p">,</span> <span class="n">c</span> <span class="p">,</span> <span class="mi">16</span> <span class="p">);</span> <span class="n">pSparcleColor</span> <span class="o">+=</span> <span class="mi">4</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">memcpy</span><span class="p">(</span> <span class="n">pSparcleRotation</span> <span class="p">,</span> <span class="n">r</span> <span class="p">,</span> <span class="mi">12</span> <span class="p">);</span> <span class="n">pSparcleRotation</span> <span class="o">+=</span> <span class="mi">3</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>Ok so it is almost all, now we need some manager / emitter for our sparkles</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+</pre></td><td class='code'><pre><code class='cpp'><span class='line'><span class="k">class</span> <span class="nc">SparclesManager</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">public</span><span class="o">:</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">vector</span><span class="o">&lt;</span> <span class="n">Sparcle</span> <span class="o">&gt;</span> <span class="n">S</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">gravity</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">Wind</span><span class="p">[</span> <span class="mi">3</span> <span class="p">];</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">p_size_min</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">p_size_max</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">p_size_decrase</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">bool</span> <span class="n">rotated</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">Texture</span> <span class="o">*</span> <span class="n">texture</span><span class="p">;</span> <span class="c1">//class pointing to texture this is simple wrapper for GLuint texID </span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">SparclesManager</span><span class="p">(</span>    <span class="kt">int</span> <span class="n">t</span> <span class="o">=</span> <span class="mi">255</span><span class="p">,</span>
+</span><span class='line'>                      <span class="kt">float</span> <span class="n">g</span> <span class="o">=</span> <span class="o">-</span><span class="mi">10</span><span class="p">,</span>
+</span><span class='line'>                      <span class="kt">int</span> <span class="n">s</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+</span><span class='line'>                      <span class="kt">float</span> <span class="n">w1</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="kt">float</span> <span class="n">w2</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="kt">float</span> <span class="n">w3</span> <span class="o">=</span> <span class="mi">0</span> <span class="p">)</span> <span class="o">:</span>
+</span><span class='line'>                      <span class="n">graviti</span><span class="p">(</span> <span class="n">g</span> <span class="p">),</span> <span class="n">p_size_min</span><span class="p">(</span> <span class="n">s</span> <span class="p">),</span> <span class="n">p_size_max</span><span class="p">(</span> <span class="n">s</span> <span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">rotated</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">p_size_decrase</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">pSparcleVertex</span> <span class="o">=</span> <span class="n">SparcleVertex</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">pSparcleColor</span> <span class="o">=</span> <span class="n">SparcleColor</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">pSparcleRotation</span> <span class="o">=</span> <span class="n">SparcleRotation</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">Clear</span><span class="p">(){</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">S</span> <span class="p">.</span> <span class="n">clear</span><span class="p">();</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">//add new particles to manager</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">Add</span><span class="p">(</span>   <span class="kt">float</span> <span class="n">x</span><span class="p">,</span> <span class="kt">float</span> <span class="n">y</span> <span class="p">,</span> <span class="kt">float</span> <span class="n">z</span> <span class="p">,</span>
+</span><span class='line'>              <span class="kt">float</span> <span class="n">vx</span><span class="p">,</span> <span class="kt">float</span> <span class="n">vy</span><span class="p">,</span> <span class="kt">float</span> <span class="n">vz</span><span class="p">,</span>
+</span><span class='line'>              <span class="kt">int</span> <span class="n">num</span> <span class="p">,</span>
+</span><span class='line'>              <span class="n">GLubyte</span> <span class="n">r</span><span class="p">,</span> <span class="n">GLubyte</span> <span class="n">g</span><span class="p">,</span> <span class="n">GLubyte</span> <span class="n">b</span> <span class="p">,</span>
+</span><span class='line'>              <span class="kt">float</span> <span class="n">MaxTime</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">+</span> <span class="n">rand</span><span class="p">()</span><span class="o">%</span><span class="mi">10</span><span class="o">*</span><span class="mf">0.2f</span> <span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">Sparcle</span> <span class="n">s</span><span class="p">(</span><span class="n">rotated</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">s</span> <span class="p">.</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">s</span> <span class="p">.</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">s</span> <span class="p">.</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="o">=</span> <span class="n">z</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">memcpy</span><span class="p">(</span> <span class="n">s</span> <span class="p">.</span> <span class="n">Wind</span> <span class="p">,</span> <span class="n">Wind</span><span class="p">,</span> <span class="mi">12</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">s</span> <span class="p">.</span> <span class="n">gravity</span> <span class="o">=</span> <span class="n">gravity</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">s</span> <span class="p">.</span> <span class="n">MaxTime</span> <span class="o">=</span> <span class="n">MaxTime</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">num</span>  <span class="p">;</span> <span class="o">++</span><span class="n">i</span> <span class="p">)</span> <span class="c1">// add multiple particles at once</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="c1">// particle color</span>
+</span><span class='line'>            <span class="n">s</span> <span class="p">.</span> <span class="n">color</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">r</span> <span class="o">/</span> <span class="mf">255.0f</span><span class="p">;</span>
+</span><span class='line'>            <span class="n">s</span> <span class="p">.</span> <span class="n">color</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">g</span> <span class="o">/</span> <span class="mf">255.0f</span><span class="p">;</span>
+</span><span class='line'>            <span class="n">s</span> <span class="p">.</span> <span class="n">color</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span class="n">b</span> <span class="o">/</span> <span class="mf">255.0f</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="c1">//acceleration</span>
+</span><span class='line'>            <span class="n">s</span> <span class="p">.</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span> <span class="o">=</span> <span class="n">vx</span> <span class="o">+</span> <span class="p">(</span> <span class="n">rand</span><span class="p">()</span><span class="o">%</span><span class="mi">20</span> <span class="o">-</span> <span class="mi">10</span> <span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">;</span>
+</span><span class='line'>            <span class="n">s</span> <span class="p">.</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">=</span> <span class="p">(</span> <span class="n">vy</span> <span class="o">+</span> <span class="p">(</span> <span class="n">rand</span><span class="p">()</span><span class="o">%</span><span class="mi">20</span> <span class="o">-</span> <span class="mi">10</span> <span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span> <span class="p">)</span> <span class="o">*</span> <span class="p">(</span> <span class="n">rand</span><span class="p">()</span><span class="o">%</span><span class="mi">3</span> <span class="o">*</span> <span class="mf">0.3f</span> <span class="o">+</span> <span class="mf">0.3f</span> <span class="p">);</span>
+</span><span class='line'>            <span class="n">s</span> <span class="p">.</span> <span class="n">Acc</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="o">=</span> <span class="n">vz</span> <span class="o">+</span> <span class="p">(</span> <span class="n">rand</span><span class="p">()</span><span class="o">%</span><span class="mi">20</span> <span class="o">-</span> <span class="mi">10</span> <span class="p">)</span> <span class="o">*</span> <span class="mf">0.1</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">S</span> <span class="p">.</span> <span class="n">push_back</span><span class="p">(</span> <span class="n">s</span> <span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// render all particles</span>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">Render</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="c1">//bind our particle texture </span>
+</span><span class='line'>        <span class="n">glActiveTexture</span><span class="p">(</span><span class="n">GL_TEXTURE0</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glUniform1i</span><span class="p">(</span><span class="n">MainMatrix3D</span><span class="o">-&gt;</span><span class="n">ParticleShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_TEX0</span><span class="p">],</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">texture</span> <span class="o">-&gt;</span> <span class="n">Bind</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//reset buffer position</span>
+</span><span class='line'>        <span class="n">pSparcleVertex</span> <span class="o">=</span> <span class="n">SparcleVertex</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">pSparcleColor</span> <span class="o">=</span> <span class="n">SparcleColor</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">pSparcleRotation</span> <span class="o">=</span> <span class="n">SparcleRotation</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">glEnable</span><span class="p">(</span> <span class="n">GL_BLEND</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//bind required data (modelview and projection matrix)</span>
+</span><span class='line'>        <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">MainMatrix3D</span><span class="o">-&gt;</span><span class="n">ParticleShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_PROJECTION_MAT</span><span class="p">],</span> <span class="mi">1</span> <span class="p">,</span><span class="nb">false</span> <span class="p">,</span> <span class="n">MainMatrix3D</span><span class="o">-&gt;</span><span class="n">Projection</span><span class="p">.</span><span class="n">m</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">MainMatrix3D</span><span class="o">-&gt;</span><span class="n">ParticleShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_MODELVIEW_WORLD_MAT</span><span class="p">],</span> <span class="mi">1</span> <span class="p">,</span><span class="nb">false</span> <span class="p">,</span> <span class="n">MainMatrix3D</span><span class="o">-&gt;</span><span class="n">ModelView</span><span class="p">.</span><span class="n">m</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//this fill our buffers with data calculated for each particle</span>
+</span><span class='line'>        <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">S</span> <span class="p">.</span> <span class="n">size</span><span class="p">();</span> <span class="p">)</span>
+</span><span class='line'>            <span class="k">if</span><span class="p">(</span> <span class="n">S</span><span class="p">[</span> <span class="n">i</span> <span class="p">]</span> <span class="p">.</span> <span class="n">Simulate</span><span class="p">()</span> <span class="p">)</span>
+</span><span class='line'>            <span class="p">{</span>
+</span><span class='line'>                <span class="n">S</span> <span class="p">.</span><span class="n">erase</span><span class="p">(</span> <span class="n">S</span> <span class="p">.</span> <span class="n">begin</span><span class="p">()</span> <span class="o">+</span> <span class="n">i</span> <span class="p">);</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="k">else</span>
+</span><span class='line'>                <span class="o">++</span><span class="n">i</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//send to shader minimum particle size (at start) it maximum size and how much it should decrase size over time</span>
+</span><span class='line'>        <span class="n">glUniform3f</span><span class="p">(</span><span class="n">MainMatrix3D</span><span class="o">-&gt;</span><span class="n">ParticleShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_TEX2</span><span class="p">],</span> <span class="n">p_size_min</span><span class="p">,</span> <span class="n">p_size_max</span><span class="p">,</span> <span class="n">p_size_decrase</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//bind buffer to GPU</span>
+</span><span class='line'>        <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_VERTEX</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">SparcleVertex</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_VERTEX</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_COLOR</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">SparcleColor</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_COLOR</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_NORMAL</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">SparcleRotation</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_NORMAL</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//and draw them as simple POINTS!</span>
+</span><span class='line'>        <span class="n">glDrawArrays</span><span class="p">(</span> <span class="n">GL_POINTS</span> <span class="p">,</span> <span class="mi">0</span> <span class="p">,</span> <span class="n">S</span> <span class="p">.</span> <span class="n">size</span><span class="p">()</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">glDisable</span><span class="p">(</span> <span class="n">GL_BLEND</span> <span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>I will not put here any source code releated to loading textures and shaders in OpenGL as there are tons of other tutorials which explain how to do that. The most importand thing is that as you propably noticed we are not drawing any geometry here! That&rsquo;s the true power of point sprites. They allow you to draw textured POINTS! the tricky part is to give them proper size and rotation which may not be so easy. Thanks god, most modern phones uses <code>gl_PointCoord</code> and <code>gl_PointSize</code> to manipulate vertex data on GPU.</p>
+
+<p>Finally some shaders taht will do all the hard work for us:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+</pre></td><td class='code'><pre><code class='glsl'><span class='line'><span class="c1">//VERTEX SHADER</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">precision</span> <span class="k">mediump</span> <span class="k">float</span><span class="p">;</span> <span class="c1">//mobile device so we need to specify precison (mediup will be good enought)</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">attribute</span> <span class="k">vec4</span> <span class="n">position</span><span class="p">;</span>
+</span><span class='line'><span class="k">attribute</span> <span class="k">vec4</span> <span class="n">color</span><span class="p">;</span>
+</span><span class='line'><span class="k">attribute</span> <span class="k">vec3</span> <span class="n">rotvec</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">uniform</span>    <span class="k">mat4</span> <span class="n">projection</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">mat4</span> <span class="n">modelView</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">vec3</span> <span class="n">pSize</span><span class="p">;</span> <span class="c1">// min, max, decrase</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">varying</span> <span class="k">vec4</span> <span class="n">pcolor</span><span class="p">;</span>
+</span><span class='line'><span class="k">varying</span> <span class="k">mat2</span> <span class="n">particleRot</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="c1">//we need to build our 2x2 matrix so we can rotate texture coordinates that comes from GPU</span>
+</span><span class='line'>    <span class="n">particleRot</span><span class="p">[</span><span class="mo">0</span><span class="p">]</span> <span class="o">=</span> <span class="k">vec2</span><span class="p">(</span> <span class="n">rotvec</span><span class="p">.</span><span class="n">y</span> <span class="p">,</span> <span class="o">-</span><span class="n">rotvec</span><span class="p">.</span><span class="n">x</span> <span class="p">);</span>
+</span><span class='line'>    <span class="n">particleRot</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">rotvec</span><span class="p">.</span><span class="n">xy</span><span class="p">;</span>
+</span><span class='line'>    <span class="cm">/*</span>
+</span><span class='line'><span class="cm">    [cos(angle),-sin(angle),</span>
+</span><span class='line'><span class="cm">     sin(angle), cos(angle)]</span>
+</span><span class='line'><span class="cm">    */</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">pcolor</span> <span class="o">=</span> <span class="n">color</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>    <span class="c1">//to explain this:</span>
+</span><span class='line'>    <span class="c1">//let say min size is 2 and maximum is 5 and reduction is also 2 so the size will move</span>
+</span><span class='line'>    <span class="c1">//from 2 -&gt; 5 -&gt; 3 (2-&gt;5-&gt;(5-2)) so it is close to easyOutBack function</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">gl_PointSize</span> <span class="o">=</span> <span class="n">mix</span><span class="p">(</span> <span class="n">pSize</span><span class="p">.</span><span class="n">z</span> <span class="o">*</span> <span class="p">(</span> <span class="n">rotvec</span><span class="p">.</span><span class="n">z</span> <span class="o">-</span> <span class="mf">1.0</span> <span class="p">)</span> <span class="o">+</span> <span class="n">pSize</span><span class="p">.</span><span class="n">y</span> <span class="p">,</span> <span class="n">pSize</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">rotvec</span><span class="p">.</span><span class="n">z</span> <span class="p">);</span>
+</span><span class='line'>    <span class="n">gl_Position</span> <span class="o">=</span> <span class="n">projection</span> <span class="o">*</span> <span class="p">(</span><span class="n">modelView</span> <span class="o">*</span> <span class="n">position</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//FRAGMENT SHADER</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">precision</span> <span class="k">mediump</span> <span class="k">float</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">varying</span> <span class="k">vec4</span> <span class="n">pcolor</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">sampler2D</span> <span class="n">pTex</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">varying</span> <span class="k">mat2</span> <span class="n">particleRot</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">vec2</span> <span class="n">texCoord</span> <span class="o">=</span> <span class="n">particleRot</span> <span class="o">*</span> <span class="p">(</span> <span class="n">gl_PointCoord</span> <span class="o">-</span> <span class="k">vec2</span><span class="p">(</span> <span class="mf">0.5</span> <span class="p">)</span> <span class="p">);</span> <span class="c1">//use our rotation matrix to modyfi texture coordinates</span>
+</span><span class='line'>    <span class="n">gl_FragColor</span> <span class="o">=</span> <span class="n">texture2D</span><span class="p">(</span> <span class="n">pTex</span> <span class="p">,</span> <span class="n">texCoord</span> <span class="o">+</span> <span class="k">vec2</span><span class="p">(</span> <span class="mf">0.5</span> <span class="p">)</span> <span class="p">)</span> <span class="o">*</span> <span class="n">pcolor</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>One more thing: remember to load your texture with <code>GL_CLAMP_TO_EDGE</code> paramter otherwise you may get some werid artifacts while rendering particles when they rotate.</p>
+
+<p>Usage:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='cpp'><span class='line'><span class="c1">//init</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">SparclesManager</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">LightSparcles</span><span class="p">,</span>
+</span><span class='line'><span class="n">ParticleSmoke</span><span class="p">(</span> <span class="mi">64</span> <span class="p">,</span> <span class="mf">0.0f</span> <span class="p">,</span> <span class="mi">14</span> <span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">0</span> <span class="p">,</span> <span class="mi">3</span> <span class="p">),</span>
+</span><span class='line'><span class="n">TankSmokeWater</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mf">0.0f</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">ParticleSmoke</span> <span class="p">.</span> <span class="n">texture</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Texture</span><span class="p">(</span> <span class="s">&quot;particle1&quot;</span><span class="p">,</span><span class="nb">true</span><span class="p">);</span>
+</span><span class='line'><span class="n">ParticleSmoke</span> <span class="p">.</span> <span class="n">p_size_min</span> <span class="o">=</span> <span class="mi">40</span><span class="p">;</span>
+</span><span class='line'><span class="n">ParticleSmoke</span> <span class="p">.</span> <span class="n">p_size_max</span> <span class="o">=</span> <span class="mi">60</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">LightSparcles</span> <span class="p">.</span> <span class="n">texture</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Texture</span><span class="p">(</span> <span class="s">&quot;particle2&quot;</span><span class="p">,</span><span class="nb">true</span><span class="p">);</span>
+</span><span class='line'><span class="n">LightSparcles</span> <span class="p">.</span> <span class="n">p_size_min</span> <span class="o">=</span> <span class="mi">12</span><span class="p">;</span>
+</span><span class='line'><span class="n">LightSparcles</span> <span class="p">.</span> <span class="n">p_size_max</span> <span class="o">=</span> <span class="mi">14</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">TankSmokeWater</span> <span class="p">.</span> <span class="n">texture</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Texture</span><span class="p">(</span> <span class="s">&quot;fx_water-splash-01&quot;</span><span class="p">,</span><span class="nb">true</span><span class="p">);</span>
+</span><span class='line'><span class="n">TankSmokeWater</span> <span class="p">.</span> <span class="n">p_size_min</span> <span class="o">=</span> <span class="mi">15</span><span class="p">;</span>
+</span><span class='line'><span class="n">TankSmokeWater</span> <span class="p">.</span> <span class="n">p_size_max</span> <span class="o">=</span> <span class="mi">150</span><span class="p">;</span>
+</span><span class='line'><span class="n">TankSmokeWater</span> <span class="p">.</span> <span class="n">p_size_decrase</span> <span class="o">=</span> <span class="mi">50</span><span class="p">;</span>
+</span><span class='line'><span class="n">TankSmokeWater</span> <span class="p">.</span> <span class="n">rotated</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//example particle adding</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">40</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">dx</span> <span class="o">=</span> <span class="p">(</span> <span class="n">rand</span><span class="p">()</span><span class="o">%</span><span class="mi">10</span> <span class="o">-</span> <span class="mi">5</span> <span class="p">)</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">dz</span> <span class="o">=</span> <span class="p">(</span> <span class="n">rand</span><span class="p">()</span><span class="o">%</span><span class="mi">10</span> <span class="o">-</span> <span class="mi">5</span> <span class="p">)</span> <span class="o">*</span> <span class="mf">0.5f</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">rand</span><span class="p">()</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">*</span> <span class="mi">10</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">LightSparcles</span> <span class="p">.</span> <span class="n">Add</span><span class="p">(</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span>  <span class="p">,</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">,</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="p">,</span>  <span class="n">dx</span><span class="o">*</span><span class="mi">2</span> <span class="p">,</span> <span class="n">dy</span> <span class="p">,</span> <span class="n">dz</span><span class="o">*</span><span class="mi">2</span> <span class="p">,</span> <span class="mi">12</span> <span class="p">,</span> <span class="mi">244</span><span class="p">,</span> <span class="mi">142</span><span class="p">,</span> <span class="mi">74</span> <span class="p">,</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">rand</span><span class="p">()</span><span class="o">%</span><span class="mi">2</span> <span class="p">);</span>
+</span><span class='line'>    <span class="n">ParticleSmoke</span> <span class="p">.</span> <span class="n">Add</span><span class="p">(</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">0</span> <span class="p">]</span>  <span class="p">,</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">1</span> <span class="p">]</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">,</span> <span class="n">Pos</span><span class="p">[</span> <span class="mi">2</span> <span class="p">]</span> <span class="p">,</span>  <span class="n">dx</span> <span class="p">,</span> <span class="mf">0.0f</span> <span class="p">,</span> <span class="n">dz</span> <span class="p">,</span> <span class="mi">1</span> <span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span><span class="p">,</span> <span class="mi">32</span> <span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="c1">//drawing</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">glkView:</span><span class="p">(</span><span class="bp">GLKView</span> <span class="o">*</span><span class="p">)</span><span class="nv">view</span> <span class="nf">drawInRect:</span><span class="p">(</span><span class="bp">CGRect</span><span class="p">)</span><span class="nv">rect</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glViewport</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rect</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="o">*</span><span class="n">RETINA_SCALE</span><span class="p">,</span> <span class="n">rect</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="o">*</span><span class="n">RETINA_SCALE</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glClearColor</span><span class="p">(</span> <span class="mf">1.0</span> <span class="p">,</span> <span class="mf">1.0</span> <span class="p">,</span> <span class="mf">1.0</span> <span class="p">,</span> <span class="mf">1.0</span> <span class="p">);</span>
+</span><span class='line'>    <span class="n">glClear</span><span class="p">(</span><span class="n">GL_COLOR_BUFFER_BIT</span> <span class="o">|</span> <span class="n">GL_DEPTH_BUFFER_BIT</span><span class="p">);</span> <span class="c1">// Clear The Screen And The Depth Buffer</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glUseProgram</span><span class="p">(</span><span class="n">MainMatrix3D</span><span class="o">-&gt;</span><span class="n">ParticleShader</span><span class="o">-&gt;</span><span class="n">ShaderProgram</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glDepthMask</span><span class="p">(</span> <span class="mi">0</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">Sparcles</span> <span class="p">.</span> <span class="n">Render</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">ParticleSmoke</span> <span class="p">.</span> <span class="n">Render</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">TankSmoke</span> <span class="p">.</span> <span class="n">Render</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">TankSmokeWater</span> <span class="p">.</span> <span class="n">Render</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">TankSmokeGrass</span> <span class="p">.</span> <span class="n">Render</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">TreeParticles</span> <span class="p">.</span> <span class="n">Render</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">HouseParticles</span> <span class="p">.</span> <span class="n">Render</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glBlendFunc</span><span class="p">(</span> <span class="n">GL_ONE</span><span class="p">,</span> <span class="n">GL_ONE</span> <span class="p">);</span> <span class="c1">//additive blending</span>
+</span><span class='line'>    <span class="n">LightSparcles</span> <span class="p">.</span> <span class="n">Render</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">glBlendFunc</span><span class="p">(</span> <span class="n">GL_ONE</span><span class="p">,</span> <span class="n">GL_ONE_MINUS_SRC_ALPHA</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glDepthMask</span><span class="p">(</span> <span class="mi">1</span> <span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And that&rsquo;s it! now we have some really simple and small (less than 300lines of code) particle emitter :) most of code is done in C++ so you can easily port / use this in other mobile platform. I&rsquo;m using same implementation in my iOS Game <a href="http://sagatanks.com/">SagaTanks</a> and it works great. You can see it in action in the video below:</p>
+
+<div class="embed-video-container"><iframe src="http://www.youtube.com/embed/AkVa1cmwaMY" allowfullscreen></iframe></div>
+
+
+<p>That&rsquo;s all for today, next time i will talk about iOS8 weirdness.</p>
+]]></content>
+  </entry>
   
 </feed>
