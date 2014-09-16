@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: 
+
+Sitemap: http://noxytrux.github.io/sitemap.xml 
