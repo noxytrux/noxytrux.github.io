@@ -4,7 +4,7 @@
   <title><![CDATA[Category: glsl | Marcin Pędzimąż]]></title>
   <link href="http://noxytrux.github.io/blog/categories/glsl/atom.xml" rel="self"/>
   <link href="http://noxytrux.github.io/"/>
-  <updated>2014-09-16T22:44:27+02:00</updated>
+  <updated>2014-09-16T22:49:16+02:00</updated>
   <id>http://noxytrux.github.io/</id>
   <author>
     <name><![CDATA[Marcin Pędzimąż]]></name>
@@ -14,7 +14,7 @@
 
   
   <entry>
-    <title type="html"><![CDATA[Efficient particle system using OpenglES2.0]]></title>
+    <title type="html"><![CDATA[Efficient particle system using OpenGL ES2.0]]></title>
     <link href="http://noxytrux.github.io/blog/2014/09/16/efficient-particle-system-using-opengles2-dot-0/"/>
     <updated>2014-09-16T18:47:35+02:00</updated>
     <id>http://noxytrux.github.io/blog/2014/09/16/efficient-particle-system-using-opengles2-dot-0</id>
