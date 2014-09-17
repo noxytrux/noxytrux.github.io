@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: popovers | Marcin Pędzimąż]]></title>
+  <link href="http://noxytrux.github.io/blog/categories/popovers/atom.xml" rel="self"/>
+  <link href="http://noxytrux.github.io/"/>
+  <updated>2014-09-17T18:42:48+02:00</updated>
+  <id>http://noxytrux.github.io/</id>
+  <author>
+    <name><![CDATA[Marcin Pędzimąż]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOS8 Weirdness part1: UIPopoverController]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/09/17/ios8-weirdness-part1-uipopovercontroller/"/>
+    <updated>2014-09-17T11:18:09+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/09/17/ios8-weirdness-part1-uipopovercontroller</id>
+    <content type="html"><![CDATA[<p>As and old wolf programmer with years of expirence in iOS I survive most of big iOS updates including switch from 4.2 to 5, from 5 to 6 and so on. Some people remember time when your app was able to work fine on all iOS verions, but all of that changes with iOS7 it makes a big change to how app are made. There is no more easy way to support iOS6 and iOS7 in one app. Apple make new iOS7 API really cool, now we have truly working Interface Builder, StoryBoards, Autolayouts etc. Making apps was never easier before. iOS8 looks event almost the same, so what could possibly go wrong?&hellip;</p>
+
+<!--more-->
+
+
+<p>Actually, a lot of things&hellip; But you say: &ldquo;oh comone, it not so bad at all. The era of dirty hacks is away!&rdquo; - NOPE.</p>
+
+<p>With iOS8 Apple introduced new way to handle <code>UIAlert</code>, <code>UIActionSheet</code> and <code>UIPopoverController</code> by introducing brand new <code>UIPopoverPresentationController</code> and <code>UIAlertController</code>, but as we all know sometimes when you build big app that is developed for few months it is not an easy decision to drop support for specified iOS version&hellip; So let&rsquo;s support both! Of course we are not allowed to use new stuff, we still want our app to support iOS7 so we are not touching our code in terms of rewriting to new popovers and alerts.</p>
+
+<p>If you prefer setuping popovers from code this article is not propably for you but if you are &ldquo;modern&rdquo; like me and you cannot anymore live without storyboards and segues you will be suprised what amazing new &ldquo;features&rdquo; iOS8 may bring to your iPad Application. Imagine this scenario: You are building your iPad app which require from you to select some values, so the natural way to handle that is to present data set in popover. Now let&rsquo;s say my app is some kind of alarm app so i need to setup and display time. I build my app and it works like a harm, no rocket sience here it&rsquo;s a simple one view controller app that fire up UIStoryBoardPopoverSegue when button gets pressed. The image explain app flow (look carefuly your popover segue is now set as deprecated in xCode 6 coz you should use new one which we can&rsquo;t use due to iOS7 support) so the app will works as described below:</p>
+
+<p><img class="center" src="/assets/images/appflowpopovers.png" width="800"></p>
+
+<p>a) User can press &ldquo;Set my date!&rdquo; button which opens Popover with DatePicker (sets &lsquo;now&rsquo; if date does not exist)<br/>
+b) User can select date <br/>
+c) By dimissing popover user is able to set new date<br/>
+d) If user press button again popover will open with latest date selected</p>
+
+<p>If we run the app on iOS7 this is what we will get:</p>
+
+<p><img class="center" src="/assets/images/popoversOK.gif" width="800"></p>
+
+<p>Ok time for some code, honestly there not to much to explain. First let&rsquo;s see how do we implement our DatePicker Controller:</p>
+
+<pre><code class="objc">
+#import &lt;UIKit/UIKit.h&gt;
+
+@interface LABDateViewController : UIViewController
+
+@property (nonatomic, strong) NSDate *date;
+@property (nonatomic, weak) IBOutlet UIDatePicker *datePicker;
+
+@end
+</code></pre>
+
+<p>So regular UIViewController with UIDatePicker attached via Outlet, now let&rsquo;s see what does it actually do:</p>
+
+<pre><code class="objc">
+#import "LABDateViewController.h"
+
+@implementation LABDateViewController
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    [self.datePicker addTarget:self
+                        action:@selector(didChangeDate:)
+              forControlEvents:UIControlEventValueChanged];
+}
+
+- (NSDate *)date
+{
+    return self.datePicker.date;
+}
+
+- (void)setDate:(NSDate *)date
+{
+    [self.datePicker setDate:date animated:YES];
+}
+
+- (void)didChangeDate:(UIDatePicker *)picker
+{
+    //send date somewhere, update, watewa
+}
+
+@end
+</code></pre>
+
+<p>As we can expected not to much it is very simple VC that only sets and gets seleted date by overwriting setter and getter of our date property.</p>
+
+<p>Now the main logic:</p>
+
+<pre><code class="objc">
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    if ( [segue.identifier isEqualToString:LABDisplayTimePopoverSegueIdentifier]) {
+
+        if (!self.currentDate) {
+
+            self.currentDate = [NSDate date];
+        }
+
+        UIStoryboardPopoverSegue *popover = (UIStoryboardPopoverSegue*)segue;
+        popover.popoverController.delegate = self;
+
+        LABDateViewController *c = (LABDateViewController *)popover.popoverController.contentViewController;
+
+        [c.datePicker setDate:self.currentDate animated:YES];
+    }
+}
+
+#pragma mark - popover delegate
+
+- (BOOL)popoverControllerShouldDismissPopover:(UIPopoverController *)popoverController;
+{
+    return YES;
+}
+
+- (void)popoverControllerDidDismissPopover:(UIPopoverController *)popoverController
+{
+    //update title
+    LABDateViewController *vc = (LABDateViewController*)popoverController.contentViewController;
+
+    self.currentDate = vc.date;
+
+    NSAssert(self.currentDate != nil, @"Upsss...");
+
+    NSString *title = [self.dateFormatter stringFromDate:self.currentDate];
+
+    [self.dateButton setTitle:title
+                     forState:UIControlStateNormal];
+}
+</code></pre>
+
+<p>As I said not much to explain simply we are passing date if exist to our created <code>UIPopoverController</code> which is supplied by <code>UIStoryboardPopoverSegue</code> at the moment we pressed button. We also set ourselfs as delegate so we can respond to popover dimiss. So after it disappear we can set currently selected value and update button title.</p>
+
+<p>Now guess what happens if you try to run this on iOS8 Device / Simulator ? Yes it will stop working :) Value will not update, button title will stay the same, basically madness and tons of WTF per minute.</p>
+
+<p><img class="center" src="/assets/images/popoversError.gif" width="800"></p>
+
+<p>So where is the problem ? If you set breakpoint in any of delegate methods you will see that they are actually not called, not at all&hellip; So the next line that we may be interested is:</p>
+
+<pre><code class="objc">UIStoryboardPopoverSegue *popover = (UIStoryboardPopoverSegue*)segue;
+popover.popoverController.delegate = self;
+</code></pre>
+
+<p>Setting the actual delegate, looks fine even if you go deeper and check StoryboardSegue you will see this:</p>
+
+<pre><code class="objc">#import &lt;UIKit/UIStoryboardSegue.h&gt;
+
+@class UIPopoverController;
+
+NS_CLASS_AVAILABLE_IOS(5_0) @interface UIStoryboardPopoverSegue : UIStoryboardSegue {
+}
+
+@property (nonatomic, retain, readonly) UIPopoverController *popoverController;
+
+@end
+</code></pre>
+
+<p>So it looks like <code>UIPopoverController</code> is retained and all is ok! The truth is that is not, i cannot explain why is this happening but after we assign our delegate the connection is droped like the popover has weak reference in the segue&hellip; The way to fix that without doing whole loading from code is to simply assing popover to strong variable, so the quick fix for that is:</p>
+
+<pre><code class="objc">
+@interface LABViewController () &lt;UIPopoverControllerDelegate&gt;
+
+@property (weak, nonatomic) IBOutlet UIButton *dateButton;
+@property (strong, nonatomic) NSDate *currentDate;
+@property (strong, nonatomic) NSDateFormatter *dateFormatter;
+@property (strong, nonatomic) UIPopoverController *chooseTimePopover;
+
+@end
+</code></pre>
+
+<p>And in our segue:</p>
+
+<pre><code class="objc">
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    if ( [segue.identifier isEqualToString:LABDisplayTimePopoverSegueIdentifier]) {
+
+        if (!self.currentDate) {
+
+            self.currentDate = [NSDate date];
+        }
+
+        UIStoryboardPopoverSegue *popover = (UIStoryboardPopoverSegue*)segue;
+//        popover.popoverController.delegate = self;
+        self.chooseTimePopover = popover.popoverController;
+        self.chooseTimePopover.delegate = self;
+
+        LABDateViewController *c = (LABDateViewController *)popover.popoverController.contentViewController;
+
+        [c.datePicker setDate:self.currentDate animated:YES];
+    }
+}
+</code></pre>
+
+<p>if you compile this, you will notice that delegate methods are now finally called so one win achieved!, title is updating but&hellip; Oh wait why every time i open popover the date is the same ?! Yes we are half done here in iOS7 at the segue all VC are loaded. In iOS8 viewDidLoad is called after segue, so if you will set breakpoint in this line:</p>
+
+<pre><code class="objc">[c.datePicker setDate:self.currentDate animated:YES];
+
+//by doing in lldb
+
+po c.datePicker 
+
+//you should get 
+
+nil
+</code></pre>
+
+<p>So we need one final workaround for this, and there are 2 ways to do that first one:</p>
+
+<p>If you VC do not need to load many variables its a good idea to set some temporary variable that will store the date as long as the viewDidLoad is not called.</p>
+
+<p>Second one:</p>
+
+<p>If you are lazy or you just don&rsquo;t want to change all your code you can do simple trick forcing view to load by putting this line:</p>
+
+<pre><code class="objc">__unused UIView *view = c.view; // or (void)c.view;
+</code></pre>
+
+<p>So the final code will looks like that:</p>
+
+<pre><code class="objc">- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
+{
+    if ( [segue.identifier isEqualToString:LABDisplayTimePopoverSegueIdentifier]) {
+
+        if (!self.currentDate) {
+
+            self.currentDate = [NSDate date];
+        }
+
+        UIStoryboardPopoverSegue *popover = (UIStoryboardPopoverSegue*)segue;
+//        popover.popoverController.delegate = self;
+        self.chooseTimePopover = popover.popoverController;
+        self.chooseTimePopover.delegate = self;
+
+        LABDateViewController *c = (LABDateViewController *)popover.popoverController.contentViewController;
+
+        __unused UIView *view = c.view; // or (void)c.view;
+
+        [c.datePicker setDate:self.currentDate animated:YES];
+    }
+}
+</code></pre>
+
+<p>This should fix all the issues related above :) hope some of you will find this helpfull. If you want to test this by yourself, here is the link to <a href="https://github.com/noxytrux/iOS8PopoverIssue">source code</a></p>
+
+<p>Keep in mind this is not an elegant solution, it is more like a temporary workaround for the issue. If you cannot rewrite your segues to <code>UIPopoverPresentationController</code> it is a good idea to put popover loading back to code or use some additional variables in contentViewController to keep your code clean. We can always wait until Apple will put some fix for that.</p>
+
+<p>Ok that&rsquo;s all for today, next time another funny iOS8 problem i encounter during my regular day work.</p>
+]]></content>
+  </entry>
+  
+</feed>
