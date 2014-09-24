@@ -4,7 +4,7 @@
   <title><![CDATA[Marcin Pędzimąż]]></title>
   <link href="http://noxytrux.github.io/atom.xml" rel="self"/>
   <link href="http://noxytrux.github.io/"/>
-  <updated>2014-09-17T18:42:48+02:00</updated>
+  <updated>2014-09-24T17:50:19+02:00</updated>
   <id>http://noxytrux.github.io/</id>
   <author>
     <name><![CDATA[Marcin Pędzimąż]]></name>
@@ -12,6 +12,355 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS8 Weirdness Part2: Modal ViewController]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/09/24/ios8-weirdness-part2-modal-viewcontroller/"/>
+    <updated>2014-09-24T16:49:51+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/09/24/ios8-weirdness-part2-modal-viewcontroller</id>
+    <content type="html"><![CDATA[<p>As i promised we are continuing werid iOS8 bugs i encounter after update. Last one was funny but this one is a masterpiece. Imagine you have project where your user can type some values eg. add contact, some place or something. We want to help our user by giving him some hints while typing or some predefinied values he can choose from. It is a good idea to present this kind of view as a modal view controller&hellip;</p>
+
+<!--more-->
+
+
+<p>Imagine my reaction to my stable iOS7 code when my QA guy come to me and said something like this:</p>
+
+<p>&ldquo;Why all our modal view controllers can close by themselves, i mean look if you dismiss popover on that modal view it will close.&rdquo;</p>
+
+<p><img class="right" src="http://noxytrux.github.io/assets/images/whatthehell.gif"></p>
+
+<p>Sounds quiet funny right? How the hell modally showed <code>UIViewController</code> can close just like that without pressing anything. But after few hours of debbuging i was not so happy it actually happend to me! All the time i was dimissing <code>UIPopoverController</code> the modal view was dimissing with this popover! But there is a trick behing this you need to set your view stack like this:</p>
+
+<p><code>UINavigationViewController</code> that holds <code>UIViewController</code> and from here you can open modal <code>UIViewController</code> that contains some containers. In some big project im participating we have some reusable ViewControllers that doing specific things one of it is <code>UIViewController</code> with <code>UITextField</code> in it. If you press on that <code>UITextField</code> a popover will show to help you choose / find some value. So this is how our app looks / works:</p>
+
+<p><img class="center" src="http://noxytrux.github.io/assets/images/modalOK.gif" width="800"></p>
+
+<p>Pretty simple, so the app opens some modal view and contains this funny component. Ofc this code works fine on iOS7, now if we run this on iOS8 we will see somethings like this:</p>
+
+<p><img class="center" src="http://noxytrux.github.io/assets/images/modalBAD.gif" width="800"></p>
+
+<p>So wherever user tap outside to dismiss <code>UIPopoverController</code> (i created it from code to avoid <a href="http://noxytrux.github.io/blog/2014/09/17/ios8-weirdness-part1-uipopovercontroller/">latest</a> issues) modal controller also dimiss&hellip; It took me some cups of coffet to recognize what is wrong but before that let&rsquo;s see some code that is responsible for this. I will not describe whole example code just the green <code>UIViewController</code> that is placed using container segue.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="cp">#import &quot;MWLContainerViewController.h&quot;</span>
+</span><span class='line'><span class="cp">#import &quot;MWLCitiesTableViewController.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@interface</span> <span class="nc">MWLContainerViewController</span> <span class="p">()</span>
+</span><span class='line'><span class="o">&lt;</span><span class="bp">UITextFieldDelegate</span><span class="p">,</span>
+</span><span class='line'><span class="bp">UIPopoverControllerDelegate</span><span class="p">,</span>
+</span><span class='line'><span class="n">MWLCitiesTableViewControllerDelegate</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="k">nonatomic</span><span class="p">,</span> <span class="k">weak</span><span class="p">)</span> <span class="kt">IBOutlet</span> <span class="bp">UITextField</span> <span class="o">*</span><span class="n">typeCityTextField</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="k">nonatomic</span><span class="p">,</span> <span class="k">strong</span><span class="p">)</span> <span class="bp">UIPopoverController</span> <span class="o">*</span><span class="n">searchPopoverController</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="k">assign</span><span class="p">,</span> <span class="k">nonatomic</span><span class="p">,</span> <span class="k">getter</span> <span class="o">=</span> <span class="n">isKeyboardVisible</span><span class="p">)</span> <span class="kt">BOOL</span> <span class="n">keyboardVisible</span><span class="p">;</span>
+</span><span class='line'><span class="k">@property</span> <span class="p">(</span><span class="k">nonatomic</span><span class="p">,</span> <span class="k">weak</span><span class="p">)</span> <span class="n">MWLCitiesTableViewController</span> <span class="o">*</span><span class="n">selectionController</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="nc">MWLContainerViewController</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidLoad</span> <span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">super</span> <span class="n">viewDidLoad</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="nb">self</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidAppear:</span><span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nv">animated</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">super</span> <span class="nl">viewDidAppear</span><span class="p">:</span><span class="n">animated</span><span class="p">];</span>
+</span><span class='line'>    <span class="p">[[</span><span class="bp">NSNotificationCenter</span> <span class="n">defaultCenter</span><span class="p">]</span> <span class="nl">addObserver</span><span class="p">:</span><span class="nb">self</span>
+</span><span class='line'>                                             <span class="nl">selector</span><span class="p">:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">keyboardDidShow</span><span class="p">:)</span>
+</span><span class='line'>                                                 <span class="nl">name</span><span class="p">:</span><span class="n">UIKeyboardDidShowNotification</span>
+</span><span class='line'>                                               <span class="nl">object</span><span class="p">:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>    <span class="p">[[</span><span class="bp">NSNotificationCenter</span> <span class="n">defaultCenter</span><span class="p">]</span> <span class="nl">addObserver</span><span class="p">:</span><span class="nb">self</span>
+</span><span class='line'>                                             <span class="nl">selector</span><span class="p">:</span><span class="k">@selector</span><span class="p">(</span><span class="nl">keyboardDidHide</span><span class="p">:)</span>
+</span><span class='line'>                                                 <span class="nl">name</span><span class="p">:</span><span class="n">UIKeyboardDidHideNotification</span>
+</span><span class='line'>                                               <span class="nl">object</span><span class="p">:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">viewDidDisappear:</span><span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nv">animated</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">super</span> <span class="nl">viewDidDisappear</span><span class="p">:</span><span class="n">animated</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">[[</span><span class="bp">NSNotificationCenter</span> <span class="n">defaultCenter</span><span class="p">]</span> <span class="nl">removeObserver</span><span class="p">:</span><span class="nb">self</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-(</span><span class="kt">void</span><span class="p">)</span><span class="nf">keyboardDidShow:</span><span class="p">(</span><span class="bp">NSNotification</span> <span class="o">*</span><span class="p">)</span><span class="nv">notification</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="nb">self</span><span class="p">.</span><span class="n">keyboardVisible</span> <span class="o">=</span> <span class="nb">YES</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span><span class="p">.</span><span class="n">editing</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="p">[</span><span class="nb">self</span> <span class="nl">showControllerIfNeeded</span><span class="p">:</span><span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span><span class="p">];</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-(</span><span class="kt">void</span><span class="p">)</span><span class="nf">keyboardDidHide:</span><span class="p">(</span><span class="bp">NSNotification</span> <span class="o">*</span><span class="p">)</span><span class="nv">notification</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="nb">self</span><span class="p">.</span><span class="n">keyboardVisible</span> <span class="o">=</span> <span class="nb">NO</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">showControllerIfNeeded:</span><span class="p">(</span><span class="bp">UIView</span> <span class="o">*</span><span class="p">)</span><span class="nv">sender</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span><span class="p">(</span><span class="nb">self</span><span class="p">.</span><span class="n">searchPopoverController</span><span class="p">.</span><span class="n">popoverVisible</span> <span class="o">==</span> <span class="nb">NO</span> <span class="o">&amp;&amp;</span> <span class="nb">self</span><span class="p">.</span><span class="n">keyboardVisible</span> <span class="o">==</span> <span class="nb">YES</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="nb">self</span><span class="p">.</span><span class="n">searchPopoverController</span> <span class="o">=</span> <span class="p">[</span><span class="nb">self</span> <span class="n">itemSelectionPopover</span><span class="p">];</span>
+</span><span class='line'>        <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">searchPopoverController</span> <span class="nl">presentPopoverFromRect</span><span class="p">:</span><span class="n">sender</span><span class="p">.</span><span class="n">bounds</span>
+</span><span class='line'>                                                      <span class="nl">inView</span><span class="p">:</span><span class="n">sender</span>
+</span><span class='line'>                                    <span class="nl">permittedArrowDirections</span><span class="p">:</span><span class="n">UIPopoverArrowDirectionDown</span>
+</span><span class='line'>                                                    <span class="nl">animated</span><span class="p">:</span><span class="nb">YES</span><span class="p">];</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="bp">UIPopoverController</span> <span class="o">*</span><span class="p">)</span><span class="nf">itemSelectionPopover</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">MWLCitiesTableViewController</span> <span class="o">*</span><span class="n">cityController</span> <span class="o">=</span> <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">storyboard</span> <span class="nl">instantiateViewControllerWithIdentifier</span><span class="p">:</span><span class="n">kMWLSegueControllerIdentifier</span><span class="p">];</span>
+</span><span class='line'>    <span class="nb">self</span><span class="p">.</span><span class="n">selectionController</span> <span class="o">=</span> <span class="n">cityController</span><span class="p">;</span>
+</span><span class='line'>    <span class="nb">self</span><span class="p">.</span><span class="n">selectionController</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="nb">self</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="bp">UIPopoverController</span> <span class="o">*</span><span class="n">popoverController</span> <span class="o">=</span> <span class="p">[[</span><span class="bp">UIPopoverController</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithContentViewController</span><span class="p">:</span><span class="n">cityController</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">popoverController</span><span class="p">.</span><span class="n">delegate</span> <span class="o">=</span> <span class="nb">self</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">popoverController</span><span class="p">.</span><span class="n">popoverContentSize</span> <span class="o">=</span> <span class="n">CGSizeMake</span><span class="p">(</span><span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="n">popoverController</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#pragma mark - UITextFieldDelegate</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">textFieldDidBeginEditing:</span><span class="p">(</span><span class="bp">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span><span class="p">.</span><span class="n">clearsOnInsertion</span> <span class="o">=</span> <span class="nb">YES</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">[</span><span class="nb">self</span> <span class="nl">showControllerIfNeeded</span><span class="p">:</span><span class="n">textField</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">textFieldDidEndEditing:</span><span class="p">(</span><span class="bp">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">searchPopoverController</span> <span class="nl">dismissPopoverAnimated</span><span class="p">:</span><span class="nb">YES</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">textFieldShouldReturn:</span><span class="p">(</span><span class="bp">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="n">textField</span> <span class="n">resignFirstResponder</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">YES</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#pragma mark - UIPopoverControllerDelegate</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">popoverControllerDidDismissPopover:</span><span class="p">(</span><span class="bp">UIPopoverController</span> <span class="o">*</span><span class="p">)</span><span class="nv">popoverController</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="c1">//delegate down</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">popoverControllerShouldDismissPopover:</span><span class="p">(</span><span class="bp">UIPopoverController</span> <span class="o">*</span><span class="p">)</span><span class="nv">popoverController</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span> <span class="n">resignFirstResponder</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">YES</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#pragma mark - MWLCitiesTableViewControllerDelegate</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">citiesTableView:</span><span class="p">(</span><span class="n">MWLCitiesTableViewController</span> <span class="o">*</span><span class="p">)</span><span class="nv">sender</span>
+</span><span class='line'>          <span class="nf">didSelectCity:</span><span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span><span class="p">)</span><span class="nv">cityName</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span><span class="p">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">cityName</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span> <span class="n">resignFirstResponder</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@end</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok so we have view controller that hold <code>UITextField</code> and <code>UIPopoverController</code> and opens it when user focus on the textfield. Popover will close if:</p>
+
+<p>a) User enter something and hide keyboard using hide key (bottom right corner)  <br/>
+b) User will press return button on keyboard <br/>
+c) User will select some value from popover <br/>
+d) User will tap outside to dimiss popover</p>
+
+<p>Every seems to work fine except the last scenario where user tap outside to cancel and hide popover. So it is again connected with <code>UIPopoverController</code> delegate methods as option a, b, c closes popover from code using <code>[self.searchPopoverController dismissPopoverAnimated:YES];</code> and as we all know popover delegate methods are called ONLY if you close popover by touching outside of it. Moving forward if you look closely you will recognize that when this code executes</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">popoverControllerShouldDismissPopover:</span><span class="p">(</span><span class="bp">UIPopoverController</span> <span class="o">*</span><span class="p">)</span><span class="nv">popoverController</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span> <span class="n">resignFirstResponder</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">YES</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>we are acutally calling this</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">textFieldDidEndEditing:</span><span class="p">(</span><span class="bp">UITextField</span> <span class="o">*</span><span class="p">)</span><span class="nv">textField</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">searchPopoverController</span> <span class="nl">dismissPopoverAnimated</span><span class="p">:</span><span class="nb">YES</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>before we leave function, so in iOS8 we are trying to close already closing popover, why this code works on iOS7? maybe there is difference in responder chain so that&rsquo;s why we are passing dimiss command down in responder. If you not belive me try and set break point in viewDidDisappear :) Reassuming to fix this isse we need to change this line:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">BOOL</span><span class="p">)</span><span class="nf">popoverControllerShouldDismissPopover:</span><span class="p">(</span><span class="bp">UIPopoverController</span> <span class="o">*</span><span class="p">)</span><span class="nv">popoverController</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="p">[</span><span class="nb">self</span><span class="p">.</span><span class="n">typeCityTextField</span> <span class="n">resignFirstResponder</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">NO</span><span class="p">;</span> <span class="c1">//YES; </span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So there is no more duplicated dimiss command moving around in our view. Acutally in this example we are alwasy sure that we call <code>textFieldDidEndEditing</code> no matter user do. But if you ever encounter some stupid , weird behaviours of your modal views you should first look at reponder chain logic.</p>
+
+<p>That&rsquo;s it, <a href="https://github.com/noxytrux/iOS8ModalViewIssue">source code</a> as always available on my github page. Next time another iOS8 issue that helps us develop &ldquo;better&rdquo; code.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOS8 Weirdness part1: UIPopoverController]]></title>

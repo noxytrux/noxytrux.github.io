@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios7 | Marcin Pędzimąż]]></title>
   <link href="http://noxytrux.github.io/blog/categories/ios7/atom.xml" rel="self"/>
   <link href="http://noxytrux.github.io/"/>
-  <updated>2014-09-17T18:42:48+02:00</updated>
+  <updated>2014-09-24T17:50:19+02:00</updated>
   <id>http://noxytrux.github.io/</id>
   <author>
     <name><![CDATA[Marcin Pędzimąż]]></name>
@@ -12,6 +12,209 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS8 Weirdness Part2: Modal ViewController]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/09/24/ios8-weirdness-part2-modal-viewcontroller/"/>
+    <updated>2014-09-24T16:49:51+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/09/24/ios8-weirdness-part2-modal-viewcontroller</id>
+    <content type="html"><![CDATA[<p>As i promised we are continuing werid iOS8 bugs i encounter after update. Last one was funny but this one is a masterpiece. Imagine you have project where your user can type some values eg. add contact, some place or something. We want to help our user by giving him some hints while typing or some predefinied values he can choose from. It is a good idea to present this kind of view as a modal view controller&hellip;</p>
+
+<!--more-->
+
+
+<p>Imagine my reaction to my stable iOS7 code when my QA guy come to me and said something like this:</p>
+
+<p>&ldquo;Why all our modal view controllers can close by themselves, i mean look if you dismiss popover on that modal view it will close.&rdquo;</p>
+
+<p><img class="right" src="/assets/images/whatthehell.gif"></p>
+
+<p>Sounds quiet funny right? How the hell modally showed <code>UIViewController</code> can close just like that without pressing anything. But after few hours of debbuging i was not so happy it actually happend to me! All the time i was dimissing <code>UIPopoverController</code> the modal view was dimissing with this popover! But there is a trick behing this you need to set your view stack like this:</p>
+
+<p><code>UINavigationViewController</code> that holds <code>UIViewController</code> and from here you can open modal <code>UIViewController</code> that contains some containers. In some big project im participating we have some reusable ViewControllers that doing specific things one of it is <code>UIViewController</code> with <code>UITextField</code> in it. If you press on that <code>UITextField</code> a popover will show to help you choose / find some value. So this is how our app looks / works:</p>
+
+<p><img class="center" src="/assets/images/modalOK.gif" width="800"></p>
+
+<p>Pretty simple, so the app opens some modal view and contains this funny component. Ofc this code works fine on iOS7, now if we run this on iOS8 we will see somethings like this:</p>
+
+<p><img class="center" src="/assets/images/modalBAD.gif" width="800"></p>
+
+<p>So wherever user tap outside to dismiss <code>UIPopoverController</code> (i created it from code to avoid <a href="http://noxytrux.github.io/blog/2014/09/17/ios8-weirdness-part1-uipopovercontroller/">latest</a> issues) modal controller also dimiss&hellip; It took me some cups of coffet to recognize what is wrong but before that let&rsquo;s see some code that is responsible for this. I will not describe whole example code just the green <code>UIViewController</code> that is placed using container segue.</p>
+
+<pre><code class="objc">#import "MWLContainerViewController.h"
+#import "MWLCitiesTableViewController.h"
+
+@interface MWLContainerViewController ()
+&lt;UITextFieldDelegate,
+UIPopoverControllerDelegate,
+MWLCitiesTableViewControllerDelegate&gt;
+
+@property (nonatomic, weak) IBOutlet UITextField *typeCityTextField;
+@property (nonatomic, strong) UIPopoverController *searchPopoverController;
+@property (assign, nonatomic, getter = isKeyboardVisible) BOOL keyboardVisible;
+@property (nonatomic, weak) MWLCitiesTableViewController *selectionController;
+
+@end
+
+@implementation MWLContainerViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+
+    self.typeCityTextField.delegate = self;
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(keyboardDidShow:)
+                                                 name:UIKeyboardDidShowNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(keyboardDidHide:)
+                                                 name:UIKeyboardDidHideNotification
+                                               object:nil];
+}
+
+- (void)viewDidDisappear:(BOOL)animated
+{
+    [super viewDidDisappear:animated];
+
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+-(void)keyboardDidShow:(NSNotification *)notification
+{
+    self.keyboardVisible = YES;
+
+    if(self.typeCityTextField.editing) {
+
+        [self showControllerIfNeeded:self.typeCityTextField];
+    }
+}
+
+-(void)keyboardDidHide:(NSNotification *)notification
+{
+    self.keyboardVisible = NO;
+}
+
+- (void)showControllerIfNeeded:(UIView *)sender
+{
+    if(self.searchPopoverController.popoverVisible == NO &amp;&amp; self.keyboardVisible == YES) {
+
+        self.searchPopoverController = [self itemSelectionPopover];
+        [self.searchPopoverController presentPopoverFromRect:sender.bounds
+                                                      inView:sender
+                                    permittedArrowDirections:UIPopoverArrowDirectionDown
+                                                    animated:YES];
+    }
+}
+
+- (UIPopoverController *)itemSelectionPopover
+{
+    MWLCitiesTableViewController *cityController = [self.storyboard instantiateViewControllerWithIdentifier:kMWLSegueControllerIdentifier];
+    self.selectionController = cityController;
+    self.selectionController.delegate = self;
+
+    UIPopoverController *popoverController = [[UIPopoverController alloc] initWithContentViewController:cityController];
+
+    popoverController.delegate = self;
+    popoverController.popoverContentSize = CGSizeMake(300, 400);
+
+    return popoverController;
+}
+
+#pragma mark - UITextFieldDelegate
+
+- (void)textFieldDidBeginEditing:(UITextField *)textField
+{
+    self.typeCityTextField.clearsOnInsertion = YES;
+
+    [self showControllerIfNeeded:textField];
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField
+{
+    [self.searchPopoverController dismissPopoverAnimated:YES];
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
+{
+    [textField resignFirstResponder];
+
+    return YES;
+}
+
+#pragma mark - UIPopoverControllerDelegate
+
+- (void)popoverControllerDidDismissPopover:(UIPopoverController *)popoverController
+{
+    //delegate down
+}
+
+- (BOOL)popoverControllerShouldDismissPopover:(UIPopoverController *)popoverController
+{
+    [self.typeCityTextField resignFirstResponder];
+
+    return YES;
+}
+
+#pragma mark - MWLCitiesTableViewControllerDelegate
+
+- (void)citiesTableView:(MWLCitiesTableViewController *)sender
+          didSelectCity:(NSString *)cityName
+{
+    self.typeCityTextField.text = cityName;
+    [self.typeCityTextField resignFirstResponder];
+}
+
+@end
+</code></pre>
+
+<p>Ok so we have view controller that hold <code>UITextField</code> and <code>UIPopoverController</code> and opens it when user focus on the textfield. Popover will close if:</p>
+
+<p>a) User enter something and hide keyboard using hide key (bottom right corner)  <br/>
+b) User will press return button on keyboard <br/>
+c) User will select some value from popover <br/>
+d) User will tap outside to dimiss popover</p>
+
+<p>Every seems to work fine except the last scenario where user tap outside to cancel and hide popover. So it is again connected with <code>UIPopoverController</code> delegate methods as option a, b, c closes popover from code using <code>[self.searchPopoverController dismissPopoverAnimated:YES];</code> and as we all know popover delegate methods are called ONLY if you close popover by touching outside of it. Moving forward if you look closely you will recognize that when this code executes</p>
+
+<pre><code class="objc">
+- (BOOL)popoverControllerShouldDismissPopover:(UIPopoverController *)popoverController
+{
+    [self.typeCityTextField resignFirstResponder];
+
+    return YES;
+}
+</code></pre>
+
+<p>we are acutally calling this</p>
+
+<pre><code class="objc">
+- (void)textFieldDidEndEditing:(UITextField *)textField
+{
+    [self.searchPopoverController dismissPopoverAnimated:YES];
+}
+</code></pre>
+
+<p>before we leave function, so in iOS8 we are trying to close already closing popover, why this code works on iOS7? maybe there is difference in responder chain so that&rsquo;s why we are passing dimiss command down in responder. If you not belive me try and set break point in viewDidDisappear :) Reassuming to fix this isse we need to change this line:</p>
+
+<pre><code class="objc">
+- (BOOL)popoverControllerShouldDismissPopover:(UIPopoverController *)popoverController
+{
+    [self.typeCityTextField resignFirstResponder];
+
+    return NO; //YES; 
+}
+</code></pre>
+
+<p>So there is no more duplicated dimiss command moving around in our view. Acutally in this example we are alwasy sure that we call <code>textFieldDidEndEditing</code> no matter user do. But if you ever encounter some stupid , weird behaviours of your modal views you should first look at reponder chain logic.</p>
+
+<p>That&rsquo;s it, <a href="https://github.com/noxytrux/iOS8ModalViewIssue">source code</a> as always available on my github page. Next time another iOS8 issue that helps us develop &ldquo;better&rdquo; code.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOS8 Weirdness part1: UIPopoverController]]></title>

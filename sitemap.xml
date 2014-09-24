@@ -3,6 +3,14 @@
   
   
   <url>
+    <loc>http://noxytrux.github.io/blog/2014/09/24/ios8-weirdness-part2-modal-viewcontroller/</loc>
+    
+    <lastmod>2014-09-24T16:49:51+02:00</lastmod>
+    
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
     <loc>http://noxytrux.github.io/blog/2014/09/17/ios8-weirdness-part1-uipopovercontroller/</loc>
     
     <lastmod>2014-09-17T11:18:09+02:00</lastmod>
@@ -21,14 +29,14 @@
   
   <url>
     <loc>http://noxytrux.github.io/blog/archives/</loc>
-    <lastmod>2014-09-17T18:42:48+02:00</lastmod>
+    <lastmod>2014-09-24T17:50:19+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   
   <url>
     <loc>http://noxytrux.github.io/</loc>
-    <lastmod>2014-09-17T18:42:48+02:00</lastmod>
+    <lastmod>2014-09-24T17:50:19+02:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
