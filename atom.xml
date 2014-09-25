@@ -4,7 +4,7 @@
   <title><![CDATA[Marcin Pędzimąż]]></title>
   <link href="http://noxytrux.github.io/atom.xml" rel="self"/>
   <link href="http://noxytrux.github.io/"/>
-  <updated>2014-09-25T16:18:48+02:00</updated>
+  <updated>2014-09-25T19:06:34+02:00</updated>
   <id>http://noxytrux.github.io/</id>
   <author>
     <name><![CDATA[Marcin Pędzimąż]]></name>
@@ -12,6 +12,228 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS UIButton backgroundColor you do it wrong...]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/09/25/ios-uibutton-backgroundcolor-you-do-it-wrong-dot-dot-dot/"/>
+    <updated>2014-09-25T16:21:30+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/09/25/ios-uibutton-backgroundcolor-you-do-it-wrong-dot-dot-dot</id>
+    <content type="html"><![CDATA[<p>This post is for those who are just starting they journey with iOS and Swift and want to learn some good practices on how to build this nice looking flat UI in modern iOS. Basically i want to talk about rectangle buttons that are filled with color. I saw some really bad implementations of <code>UIButton</code> and now, I want to present you a common mistake, i ofen see in many project even those mature ones.</p>
+
+<!--more-->
+
+
+<p>This image descibes our tutorial code, we have two button first one is done in bad habit and uses backgroundcolor and second one is done using background image property.</p>
+
+<p><img class="center" src="http://noxytrux.github.io/assets/images/look_buttons.png" width="300"></p>
+
+<p>Basically backgroundColor property is good thing to use in Interface Builder to see how the button will looks like. But if you try to manage states you will end up with something like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="vi">@IBAction</span> <span class="n">func</span> <span class="n">buttonHightlight</span><span class="p">(</span><span class="ss">sender</span><span class="p">:</span> <span class="no">UIButton</span><span class="o">!</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">sender</span><span class="o">.</span><span class="n">backgroundColor</span> <span class="o">=</span> <span class="no">UIColor</span><span class="p">(</span><span class="ss">red</span><span class="p">:</span> <span class="mi">255</span><span class="o">.</span><span class="mi">0</span><span class="o">/</span><span class="mi">255</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="ss">green</span><span class="p">:</span> <span class="mi">81</span><span class="o">.</span><span class="mi">0</span><span class="o">/</span><span class="mi">255</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="ss">blue</span><span class="p">:</span> <span class="mi">85</span><span class="o">.</span><span class="mi">0</span><span class="o">/</span><span class="mi">255</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="ss">alpha</span><span class="p">:</span> <span class="mi">0</span><span class="o">.</span><span class="mi">5</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="vi">@IBAction</span> <span class="n">func</span> <span class="n">buttonNormal</span><span class="p">(</span><span class="ss">sender</span><span class="p">:</span> <span class="no">UIButton</span><span class="o">!</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">sender</span><span class="o">.</span><span class="n">backgroundColor</span> <span class="o">=</span> <span class="no">UIColor</span><span class="p">(</span><span class="ss">red</span><span class="p">:</span> <span class="mi">255</span><span class="o">.</span><span class="mi">0</span><span class="o">/</span><span class="mi">255</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="ss">green</span><span class="p">:</span> <span class="mi">81</span><span class="o">.</span><span class="mi">0</span><span class="o">/</span><span class="mi">255</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="ss">blue</span><span class="p">:</span> <span class="mi">85</span><span class="o">.</span><span class="mi">0</span><span class="o">/</span><span class="mi">255</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="ss">alpha</span><span class="p">:</span> <span class="mi">1</span><span class="o">.</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It is event worst because your states in IB looks very similar to this:</p>
+
+<p><img class="center" src="http://noxytrux.github.io/assets/images/selector_ohno.png" width="300"></p>
+
+<p>Madness and disaster, seriously that&rsquo;s not how you want to build your button, highlight state is build in and it&rsquo;s for free. And of course you only want to call function reponsible for pressing button no additional ones.</p>
+
+<p>To do that we should use backgroundImage property of <code>UIButton</code>, but to not generate any additional assets let&rsquo;s build two extensions. First one will be reponsibe for generating <code>UIImage</code> from <code>UIColor</code> so we can set it directly from code.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="n">import</span> <span class="no">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="no">UIImage</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">class</span> <span class="n">func</span> <span class="n">imageWithColor</span><span class="p">(</span><span class="ss">color</span><span class="p">:</span><span class="no">UIColor</span><span class="sc">?)</span> <span class="o">-&gt;</span> <span class="no">UIImage</span><span class="o">!</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">let</span> <span class="n">rect</span> <span class="o">=</span> <span class="no">CGRectMake</span><span class="p">(</span><span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="o">.</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="o">.</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="no">UIGraphicsBeginImageContextWithOptions</span><span class="p">(</span><span class="n">rect</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="kp">false</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">let</span> <span class="n">context</span> <span class="o">=</span> <span class="no">UIGraphicsGetCurrentContext</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">color</span> <span class="o">=</span> <span class="n">color</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">color</span><span class="o">.</span><span class="n">setFill</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="no">UIColor</span><span class="o">.</span><span class="n">whiteColor</span><span class="p">()</span><span class="o">.</span><span class="n">setFill</span><span class="p">()</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="no">CGContextFillRect</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">rect</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">let</span> <span class="n">image</span> <span class="o">=</span> <span class="no">UIGraphicsGetImageFromCurrentImageContext</span><span class="p">();</span>
+</span><span class='line'>        <span class="no">UIGraphicsEndImageContext</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">image</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Second one is not required but is very usefull, and allow you to copy and paste color from eg gimp or photoshop. We are talking about UIColor extension that allow us to use hexadecimal strings as input value.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="n">import</span> <span class="no">UIKit</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">extension</span> <span class="no">UIColor</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">class</span> <span class="n">func</span> <span class="n">colorWithHex</span><span class="p">(</span><span class="ss">hexString</span><span class="p">:</span> <span class="nb">String</span><span class="sc">?)</span> <span class="o">-&gt;</span> <span class="no">UIColor</span><span class="p">?</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="n">colorWithHex</span><span class="p">(</span><span class="n">hexString</span><span class="p">,</span> <span class="ss">alpha</span><span class="p">:</span> <span class="mi">1</span><span class="o">.</span><span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">class</span> <span class="n">func</span> <span class="n">colorWithHex</span><span class="p">(</span><span class="ss">hexString</span><span class="p">:</span> <span class="nb">String</span><span class="sc">?,</span> <span class="ss">alpha</span><span class="p">:</span> <span class="no">CGFloat</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="no">UIColor</span><span class="p">?</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">if</span> <span class="n">let</span> <span class="n">hexString</span> <span class="o">=</span> <span class="n">hexString</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">var</span> <span class="n">error</span> <span class="p">:</span> <span class="no">NSError</span><span class="p">?</span> <span class="o">=</span> <span class="kp">nil</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">let</span> <span class="n">regexp</span> <span class="o">=</span> <span class="no">NSRegularExpression</span><span class="p">(</span><span class="ss">pattern</span><span class="p">:</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">A#[0-9a-f]{6}</span><span class="se">\\</span><span class="s2">z&quot;</span><span class="p">,</span>
+</span><span class='line'>                <span class="ss">options</span><span class="p">:</span> <span class="o">.</span><span class="n">CaseInsensitive</span><span class="p">,</span>
+</span><span class='line'>                <span class="ss">error</span><span class="p">:</span> <span class="o">&amp;</span><span class="n">error</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">let</span> <span class="n">count</span> <span class="o">=</span> <span class="n">regexp</span><span class="o">.</span><span class="n">numberOfMatchesInString</span><span class="p">(</span><span class="n">hexString</span><span class="p">,</span>
+</span><span class='line'>                <span class="ss">options</span><span class="p">:</span> <span class="o">.</span><span class="n">ReportProgress</span><span class="p">,</span>
+</span><span class='line'>                <span class="ss">range</span><span class="p">:</span> <span class="no">NSMakeRange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">countElements</span><span class="p">(</span><span class="n">hexString</span><span class="p">)))</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="k">if</span> <span class="n">count</span> <span class="o">!=</span> <span class="mi">1</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>                <span class="k">return</span> <span class="kp">nil</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">var</span> <span class="n">rgbValue</span> <span class="p">:</span> <span class="no">UInt32</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">let</span> <span class="n">scanner</span> <span class="o">=</span> <span class="no">NSScanner</span><span class="p">(</span><span class="ss">string</span><span class="p">:</span> <span class="n">hexString</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">scanner</span><span class="o">.</span><span class="n">scanLocation</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'>            <span class="n">scanner</span><span class="o">.</span><span class="n">scanHexInt</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rgbValue</span><span class="p">)</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">let</span> <span class="n">red</span>   <span class="o">=</span> <span class="no">CGFloat</span><span class="p">(</span> <span class="p">(</span><span class="n">rgbValue</span> <span class="o">&amp;</span> <span class="mh">0xFF0000</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">16</span><span class="p">)</span> <span class="o">/</span> <span class="mi">255</span><span class="o">.</span><span class="mi">0</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">green</span> <span class="o">=</span> <span class="no">CGFloat</span><span class="p">(</span> <span class="p">(</span><span class="n">rgbValue</span> <span class="o">&amp;</span> <span class="mh">0xFF00</span><span class="p">)</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">)</span> <span class="o">/</span> <span class="mi">255</span><span class="o">.</span><span class="mi">0</span>
+</span><span class='line'>            <span class="n">let</span> <span class="n">blue</span>  <span class="o">=</span> <span class="no">CGFloat</span><span class="p">(</span> <span class="p">(</span><span class="n">rgbValue</span> <span class="o">&amp;</span> <span class="mh">0xFF</span><span class="p">)</span> <span class="p">)</span> <span class="o">/</span> <span class="mi">255</span><span class="o">.</span><span class="mi">0</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="k">return</span> <span class="no">UIColor</span><span class="p">(</span><span class="ss">red</span><span class="p">:</span> <span class="n">red</span><span class="p">,</span> <span class="ss">green</span><span class="p">:</span> <span class="n">green</span><span class="p">,</span> <span class="ss">blue</span><span class="p">:</span> <span class="n">blue</span><span class="p">,</span> <span class="ss">alpha</span><span class="p">:</span> <span class="n">alpha</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="k">return</span> <span class="kp">nil</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And that&rsquo;s it, so how do we set our good button ? like this:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='Ruby'><span class='line'><span class="sr">//</span><span class="n">good</span> <span class="n">button</span><span class="o">.</span><span class="n">.</span><span class="o">.</span>
+</span><span class='line'><span class="n">goodButton</span><span class="o">.</span><span class="n">backgroundColor</span> <span class="o">=</span> <span class="no">UIColor</span><span class="o">.</span><span class="n">clearColor</span><span class="p">()</span> <span class="sr">//</span><span class="n">reset</span> <span class="no">IB</span> <span class="no">Color</span>
+</span><span class='line'><span class="n">goodButton</span><span class="o">.</span><span class="n">setBackgroundImage</span><span class="p">(</span><span class="no">UIImage</span><span class="o">.</span><span class="n">imageWithColor</span><span class="p">(</span><span class="no">UIColor</span><span class="o">.</span><span class="n">colorWithHex</span><span class="p">(</span><span class="s2">&quot;#66D269&quot;</span><span class="p">)),</span> <span class="ss">forState</span><span class="p">:</span> <span class="o">.</span><span class="n">Normal</span><span class="p">)</span>
+</span><span class='line'><span class="n">goodButton</span><span class="o">.</span><span class="n">setBackgroundImage</span><span class="p">(</span><span class="no">UIImage</span><span class="o">.</span><span class="n">imageWithColor</span><span class="p">(</span><span class="no">UIColor</span><span class="o">.</span><span class="n">colorWithHex</span><span class="p">(</span><span class="s2">&quot;#66D269&quot;</span><span class="p">,</span> <span class="ss">alpha</span><span class="p">:</span> <span class="mi">0</span><span class="o">.</span><span class="mi">5</span><span class="p">)),</span> <span class="ss">forState</span><span class="p">:</span> <span class="o">.</span><span class="n">Highlighted</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>So reassuming, do not use <code>IBAction</code> to modify button color, hightlight state etc. Use backgroundImage and if you don&rsquo;t want to use assets build them from code using extensions. As always <a href="https://github.com/noxytrux/ButtonsGoodPracticeTutorial">source code</a> on my github page.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[iOS8 Weirdness Part3: Laggy UICollectionView]]></title>
