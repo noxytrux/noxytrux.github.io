@@ -4,7 +4,7 @@
   <title><![CDATA[Category: ios | Marcin Pędzimąż]]></title>
   <link href="http://noxytrux.github.io/blog/categories/ios/atom.xml" rel="self"/>
   <link href="http://noxytrux.github.io/"/>
-  <updated>2014-09-25T15:56:09+02:00</updated>
+  <updated>2014-09-25T16:18:48+02:00</updated>
   <id>http://noxytrux.github.io/</id>
   <author>
     <name><![CDATA[Marcin Pędzimąż]]></name>
@@ -735,7 +735,7 @@ public:
 };
 </code></pre>
 
-<p>I will not put here any source code releated to loading textures and shaders in OpenGL as there are tons of other tutorials which explain how to do that. The most importand thing is that as you propably noticed we are not drawing any geometry here! That&rsquo;s the true power of point sprites. They allow you to draw textured POINTS! the tricky part is to give them proper size and rotation which may not be so easy. Thanks god, most modern phones uses <code>gl_PointCoord</code> and <code>gl_PointSize</code> to manipulate vertex data on GPU.</p>
+<p>I will not put here any source code releated to loading textures and shaders in OpenGL as there are tons of other tutorials which explain how to do that. The most importand thing is that as you probably noticed we are not drawing any geometry here! That&rsquo;s the true power of point sprites. They allow you to draw textured POINTS! the tricky part is to give them proper size and rotation which may not be so easy. Thanks god, most modern phones uses <code>gl_PointCoord</code> and <code>gl_PointSize</code> to manipulate vertex data on GPU.</p>
 
 <p>Finally some shaders that will do all the hard work for us:</p>
 
