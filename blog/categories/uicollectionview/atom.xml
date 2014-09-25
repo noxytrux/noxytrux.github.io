@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: uicollectionview | Marcin Pędzimąż]]></title>
+  <link href="http://noxytrux.github.io/blog/categories/uicollectionview/atom.xml" rel="self"/>
+  <link href="http://noxytrux.github.io/"/>
+  <updated>2014-09-25T15:56:09+02:00</updated>
+  <id>http://noxytrux.github.io/</id>
+  <author>
+    <name><![CDATA[Marcin Pędzimąż]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOS8 Weirdness Part3: Laggy UICollectionView]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/09/25/ios8-weirdness-part3-laggy-uicollectionview/"/>
+    <updated>2014-09-25T10:03:36+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/09/25/ios8-weirdness-part3-laggy-uicollectionview</id>
+    <content type="html"><![CDATA[<p>Autolayouts, something that people love and hate. When Apple introduced them i had mixed felling about it, from one hand it reduces tons of code, also do a lot of calculation for you and of course it magically works! In other hand&hellip; it is terribly slow i still see my manual <code>setFrame:</code> at least 10 times faster than calculation something in AL but nothing for free.</p>
+
+<!--more-->
+
+
+<p></p>
+
+<p>This post will not be long, the main problem is that as most of you may know using autolayout in scrollview is pain in ass terrible slow due to continous autolayout recalculation mostly if you use xib loaded view with AL attached to them. So why not to use UICollectionView better, faster, bigger, stronger. I have heavy collection view with very complicated cells (in terms of autolayout) but they are done pretty smert and work really fast and smooth, of course only in iOS7</p>
+
+<p>After updating my ipad to iOS8 i encounter terrible lags while scrolling <code>UICollectionView</code> in my app. Again instruments bug haunting with tons of coffee shows me that my amazing <code>UICollectionView</code> starts acting exacly like ugly <code>UIScrollView</code> solution and recalculates cells autolayout over and over again!</p>
+
+<p><img class="center" src="/assets/images/ohcomone.gif"></p>
+
+<p>Gladly solution to that is pretty simple. If you watched <a href="https://developer.apple.com/videos/wwdc/2014/">WWDC 2014</a> about changes in collection view you propably noticed that Apple introduces some new Invaidation Context etc. But we do not need to implement all of that if you want to get your smooth and nice scrolling the only thing you need is to implement this method in your custom <code>UICollectionViewCell</code></p>
+
+<pre><code class="objc">
+- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    return layoutAttributes;
+}
+</code></pre>
+
+<p>And you are done! Collection view again works as expected, it happens because this is called before autolayout calcualtion and it returns proper cell size so there is no need to trigger recalcualtion again. You should see some visual changes eg collection view cell will no more weirdly rescale from 1x1 to it desired scale.</p>
+
+<p>That&rsquo;s all for now, next time some UIButton good practices for those who just start coding in iOS and want their flat buttons looks and works good.</p>
+]]></content>
+  </entry>
+  
+</feed>
