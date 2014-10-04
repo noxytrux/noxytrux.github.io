@@ -1,0 +1,658 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: opengl es2.0 | Marcin Pędzimąż]]></title>
+  <link href="http://noxytrux.github.io/blog/categories/opengl-es2-dot-0/atom.xml" rel="self"/>
+  <link href="http://noxytrux.github.io/"/>
+  <updated>2014-10-04T23:48:28+02:00</updated>
+  <id>http://noxytrux.github.io/</id>
+  <author>
+    <name><![CDATA[Marcin Pędzimąż]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Godrays for mobile devices]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/10/04/godrays-for-mobile-devices/"/>
+    <updated>2014-10-04T18:00:41+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/10/04/godrays-for-mobile-devices</id>
+    <content type="html"><![CDATA[<p>This time I want to talk about one of the best postprocess effect I saw in games. It&rsquo;s called <code>Godrays</code> or <code>Lightshafts</code> depents on people I&rsquo;m calling it godrays. Basically it&rsquo;s one of the most challenging effects due to it&rsquo;s horsepower consumption. Today i will show you how to implement low cost Godrays for your mobile game (or PC).</p>
+
+<!--more-->
+
+
+<p>After correct implementation you should see something like that:</p>
+
+<p><img class="center" src="/assets/images/godrays_image.png" width="800"></p>
+
+<p>Awesome isn&rsquo;t it? Everything you see comes from my custom 3D engine that i build some time ago and now i did some finetunings to see how much i can achieve with current mobile phones generation. Demo runs at stable 30FPS having godrays, shadows, full physic etc. If there are any heavy calculations im using dynamic viewport scalling to drop down pixels and save some CPU and GPU calculations.</p>
+
+<p>But enought talking time to show some code, ah before we start keep in mind this is OpenGL ES 2.0 implementation and you can do it even better and faster using ES 3.0 which contains MRT (multiple render target) to save some render passes.</p>
+
+<p>First we need to implement our FBO to store dynamic textures:</p>
+
+<pre><code class="cpp">
+#import &lt;Foundation/Foundation.h&gt;
+#import &lt;OpenGLES/EAGL.h&gt;
+#import &lt;OpenGLES/ES2/gl.h&gt;
+#import &lt;OpenGLES/ES2/glext.h&gt;
+
+#define glBindVertexArray glBindVertexArrayOES
+#define glGenVertexArrays glGenVertexArraysOES
+#define glDeleteVertexArrays glDeleteVertexArraysOES
+
+#ifndef FBO_H
+#define FBO_H
+enum MRT_TYPE { FBO_2D_COLOR, FBO_CUBE_COLOR, FBO_2D_DEPTH, FBO_2D_DEPTH2 };
+
+typedef struct {
+    MRT_TYPE    type; 
+    int         format; 
+    GLenum      m_eAttachment;
+    GLenum      eTarget;
+} MRTLayer;
+
+class FrameBufferObject {
+public:
+    MRTLayer own;
+
+    FrameBufferObject();
+    ~FrameBufferObject() {Destroy();}
+
+    void Add(MRTLayer Current);
+    bool CreateNormal(MRT_TYPE type, int format, GLuint width, GLuint height);
+    bool CreateDepth(GLuint width, GLuint height);
+    bool Create(GLuint width, GLuint height);
+    void Destroy();
+
+    void Begin(GLuint nFace);
+    void End(GLuint nFace);
+
+    void Bind(GLint unit, GLint index);
+    void Unbind(GLint unit);
+
+    GLuint getTextureHandle(int what)   {return m_nTexId;}
+    GLuint getWidth()   {return m_nWidth;}
+    GLuint getHeight()  {return m_nHeight;}
+    bool   isError() {return !m_bUseFBO;}
+
+
+    bool CheckStatus();
+    GLuint      m_nTexId;
+
+private:
+    bool        m_bUseFBO;
+    bool        m_bUseDepthBuffer;
+
+    GLuint      m_nWidth, m_nHeight;
+    GLuint      m_nFrameBufferHandle;
+    GLuint      m_nDepthBufferHandle;
+    GLenum      m_eTextureType;
+    GLuint      m_oldBuffer;
+
+};
+#endif
+</code></pre>
+
+<p>It is acutally a cpp code because i port it from my old 3D Engine i did when i was working on windows.</p>
+
+<pre><code class="cpp">#include "FrameBufferObject.h"
+
+FrameBufferObject::FrameBufferObject()
+{
+    m_nFrameBufferHandle=0;
+    m_nDepthBufferHandle=0;
+    m_nTexId = 0;
+    m_nWidth = 0;
+    m_nHeight = 0;
+    m_bUseFBO = true;
+    m_oldBuffer = 0;
+}
+
+void FrameBufferObject::Destroy()
+{
+    glDeleteTextures(1, &amp;m_nTexId);
+    glDeleteFramebuffers(1, &amp;m_nFrameBufferHandle);
+    if(m_bUseDepthBuffer)
+        glDeleteRenderbuffers(1, &amp;m_nDepthBufferHandle);
+
+    m_nFrameBufferHandle=0;
+    m_nDepthBufferHandle=0;
+    m_nTexId = 0;
+    m_nWidth = 0;
+    m_nHeight = 0;
+    m_bUseFBO = true;
+}
+
+void FrameBufferObject::Add(MRTLayer Current)
+{
+    own = Current;
+}
+
+void FrameBufferObject::Begin(GLuint nFace) 
+{
+    assert(nFace&lt;6);
+    glViewport(0, 0, m_nWidth, m_nHeight);
+
+
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint *) &amp;m_oldBuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, m_nFrameBufferHandle);
+
+}
+
+void FrameBufferObject::End(GLuint nFace) 
+{
+        glBindFramebuffer(GL_FRAMEBUFFER, m_oldBuffer);
+}
+
+void FrameBufferObject::Bind(GLint unit, GLint index) 
+{
+    glActiveTexture(GL_TEXTURE0 + unit);
+    glEnable(m_eTextureType);
+    glBindTexture(m_eTextureType, m_nTexId);
+}
+
+void FrameBufferObject::Unbind(GLint unit) 
+{
+    glActiveTexture(GL_TEXTURE0 + unit);
+    glBindTexture( m_eTextureType, 0 );
+    glDisable(m_eTextureType);
+}
+
+bool FrameBufferObject::Create(GLuint width, GLuint height){
+    return false;
+};
+
+bool FrameBufferObject::CreateNormal(MRT_TYPE type, int format, GLuint width, GLuint height)
+{
+    own.type = type;
+    own.format = format;
+    Destroy();
+
+
+    m_nWidth = width;
+    m_nHeight = height;
+    m_bUseFBO = true;
+    m_bUseDepthBuffer = false;
+    m_eTextureType = GL_TEXTURE_2D;
+
+    //this is very important on mobile devices! you need to keep tracking
+    //original FBO that iOS creates for you while rendering scene.
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint *) &amp;m_oldBuffer);
+
+
+    glGenRenderbuffers(1, &amp;m_nDepthBufferHandle);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_nDepthBufferHandle);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    glGenTextures(1, &amp;m_nTexId);
+    glBindTexture(GL_TEXTURE_2D, m_nTexId);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0,  GL_RGBA , GL_UNSIGNED_BYTE, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenFramebuffers(1, &amp;m_nFrameBufferHandle);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_nFrameBufferHandle);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_nTexId, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_nDepthBufferHandle);
+
+    CheckStatus();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_oldBuffer);
+
+
+    return true;
+}
+
+bool FrameBufferObject::CreateDepth(GLuint width, GLuint height)
+{
+
+    m_nWidth = width;
+    m_nHeight = height;
+
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, (GLint *) &amp;m_oldBuffer);
+
+    glGenTextures(1, &amp;m_nTexId);
+    glBindTexture(GL_TEXTURE_2D, m_nTexId);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_STENCIL_OES, width, height, 
+                 0,
+                 GL_DEPTH_STENCIL_OES, 
+                 GL_UNSIGNED_INT_24_8_OES, 
+                 NULL);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenFramebuffers(1, &amp;m_nFrameBufferHandle);
+    glBindFramebuffer(GL_FRAMEBUFFER, m_nFrameBufferHandle);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, m_nTexId, 0);
+
+    CheckStatus();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, m_oldBuffer);
+
+    return true;
+}
+
+bool FrameBufferObject::CheckStatus()
+{
+
+    switch(glCheckFramebufferStatus(GL_FRAMEBUFFER)) {
+        case GL_FRAMEBUFFER_COMPLETE:
+            NSLog(@"GL_FRAMEBUFFER_COMPLETE_EXT ");
+            return true;
+            break;
+
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+            NSLog(@"GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT ");
+
+            break;
+
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+            NSLog(@"GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT ");
+
+            break;
+#if TARGET_OS_IPHONE    
+        case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
+            NSLog(@"GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT ");
+
+            break;
+#endif
+        case GL_FRAMEBUFFER_UNSUPPORTED:
+            NSLog(@"GL_FRAMEBUFFER_UNSUPPORTED_EXT ");
+
+            break;
+
+    }
+
+    return false;
+}
+</code></pre>
+
+<p>Now we need some code that will help us render, find and transform sun position to screen space.</p>
+
+<pre><code class="cpp">
+//this should be somehow dynamic but it's tutorial so I'm hardcoding this :)
+float GODRAY_X = 568;
+float GODRAY_Y = 320;
+float RETINA_SCALE = 2.0f;
+float shaftX;
+float shaftY;
+
+static const GLfloat squareVertices[] = {
+    -GODRAY_X, -GODRAY_Y,
+    GODRAY_X, -GODRAY_Y,
+    -GODRAY_X,  GODRAY_Y,
+    GODRAY_X,  GODRAY_Y,
+};
+
+static const GLfloat textureVertices[] = {
+    0.0f, 0.0f,
+    1.0f, 0.0f,
+    0.0f, 1.0f,
+    1.0f, 1.0f,
+}; 
+</code></pre>
+
+<p>Now create our FBO that will keep depth and 2 another that will compose the final image by blurring downscaled image.</p>
+
+<pre><code class="cpp">
+FrameBufferObject *FBO;
+FrameBufferObject *BFBO;
+FrameBufferObject *BFBO2;
+
+FBO = new FrameBufferObject;
+FBO-&gt;CreateDepth(GODRAY_X, GODRAY_Y);
+
+BFBO = new FrameBufferObject;
+BFBO-&gt;CreateNormal(FBO_2D_COLOR, GL_RGBA, GODRAY_X, GODRAY_Y);
+
+BFBO2 = new FrameBufferObject;
+BFBO2-&gt;CreateNormal(FBO_2D_COLOR, GL_RGBA, GODRAY_X, GODRAY_Y);
+</code></pre>
+
+<p>Remember to dispose resources in dealloc!</p>
+
+<pre><code class="objc">- (void)dealloc
+{
+    FBO-&gt;Destroy();
+    delete FBO;
+
+    BFBO-&gt;Destroy();
+    delete BFBO; 
+
+    BFBO2-&gt;Destroy();
+    delete BFBO2; 
+}
+</code></pre>
+
+<p>Now time to prepare data, render objects to FBO and compose it to final image</p>
+
+<pre><code class="objc">
+void getLightScreenCoor(xVec3 light, float &amp;uniformLightX, float &amp;uniformLightY)
+{
+    int viewport[4] = {0, 0, GODRAY_X, GODRAY_Y};
+    GLKVector3 msun = GLKVector3Make(light.x, light.y, light.z);
+    GLKVector3 win = GLKMathProject(msun, 
+                                    ModelView, 
+                                    Projection, 
+                                    viewport);
+    uniformLightX = win.x/GODRAY_X;
+    uniformLightY = win.y/GODRAY_Y;
+}
+
+- (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
+{
+    glClearColor(0.65f, 0.65f, 0.65f, 1.0f);
+
+    FBO-&gt;Begin(0);
+    {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);    
+
+        //render your objects here and store their depth   
+
+        ...      
+    }
+    FBO-&gt;End(0);   
+
+    glViewport(0, 0, rect.size.width*RETINA_SCALE, rect.size.height*RETINA_SCALE);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    //NOW RENDER YOUR DATA AGAIN TO OUTPUT FBO
+
+    ...
+
+    //PROPER LIGHTSHAFTS RENDERING
+
+    //1st get sun direction vector, find it's position in 3D space and convert to 2D position
+    xVec3 Sun = xVec3(-0.291719, -0.951882, -0.093922); 
+    float sunsize = 1.23 * 9000 - 4000;
+    Sun *= sunsize;
+
+    //get 2D position
+    getLightScreenCoor(Sun, shaftX, shaftY);
+
+    Sun.normalize();
+    float dotlight = eyeDirection.dot(Sun); //THIS IS USEFULL FOR CALCUALTING HOW MUCH GOD RAYS POSTPROCESS WE WANT TO APPLY
+
+    Projection = GLKMatrix4MakeOrtho(-GODRAY_X, GODRAY_X, -GODRAY_Y, GODRAY_Y, 0.0, 1000.0);
+    ModelView = GLKMatrix4Identity;
+
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    //NOW BUILD OUR SHAFTS TEXTURE
+
+        //COMPUTE SHAFTS
+        BFBO-&gt;Begin(0);
+        {
+            glUseProgram(ShaftShader-&gt;ShaderProgram);
+
+            glActiveTexture(GL_TEXTURE0);
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, FBO-&gt;m_nTexId);
+            glUniformMatrix4fv(ShaftShader-&gt;uniforms[UNI_PROJECTION_MAT], 1 ,false , Projection.m);
+            glUniformMatrix4fv(ShaftShader-&gt;uniforms[UNI_MODELVIEW_WORLD_MAT], 1 ,false , ModelView.m);
+            glUniform1i(ShaftShader-&gt;uniforms[UNI_TEX0],0);
+            glUniform2f(ShaftShader-&gt;uniforms[UNI_SCREEN_POS], shaftX, shaftY);
+            glUniform1f(ShaftShader-&gt;uniforms[UNI_DOT_LIGHT], dotlight);
+            glUniform3fv(ShaftShader-&gt;uniforms[UNI_LIGHT_COLOR], 1, m_SunColor.get());
+
+            glVertexAttribPointer(ATTRIB_VERTEX, 2, GL_FLOAT, 0, 0, squareVertices);
+            glEnableVertexAttribArray(ATTRIB_VERTEX);
+            glVertexAttribPointer(ATTRIB_COORDS, 2, GL_FLOAT, 0, 0, textureVertices);
+            glEnableVertexAttribArray(ATTRIB_COORDS);
+
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        }
+        BFBO-&gt;End(0);
+
+        //BLUR VERTICALLY
+        BFBO2-&gt;Begin(0);
+        {
+            glUseProgram(blurShaderY-&gt;ShaderProgram);
+
+            glActiveTexture(GL_TEXTURE0);
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, BFBO-&gt;m_nTexId);
+            glUniformMatrix4fv(blurShaderY-&gt;uniforms[UNI_PROJECTION_MAT], 1 ,false , Projection.m);
+            glUniformMatrix4fv(blurShaderY-&gt;uniforms[UNI_MODELVIEW_WORLD_MAT], 1 ,false , ModelView.m);
+            glUniform1i(blurShaderY-&gt;uniforms[UNI_TEX0],0);
+
+            glVertexAttribPointer(ATTRIB_VERTEX, 2, GL_FLOAT, 0, 0, squareVertices);
+            glEnableVertexAttribArray(ATTRIB_VERTEX);
+            glVertexAttribPointer(ATTRIB_COORDS, 2, GL_FLOAT, 0, 0, textureVertices);
+            glEnableVertexAttribArray(ATTRIB_COORDS);
+
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
+        BFBO2-&gt;End(0);
+
+        //BLUR HORIZONTALLY AND COMPOSE WITH CURRENT IMAGE
+
+        glViewport(0, 0, rect.size.width*RETINA_SCALE, rect.size.height*RETINA_SCALE);
+
+        glBlendFunc(GL_ONE, GL_ONE); //CHANGE TO ADDITIVE BLENDING
+
+        glUseProgram(blurShaderX-&gt;ShaderProgram);
+
+        glActiveTexture(GL_TEXTURE0);
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, BFBO2-&gt;m_nTexId);
+        glUniformMatrix4fv(blurShaderX-&gt;uniforms[UNI_PROJECTION_MAT], 1 ,false , Projection.m);
+        glUniformMatrix4fv(blurShaderX-&gt;uniforms[UNI_MODELVIEW_WORLD_MAT], 1 ,false , ModelView.m);
+        glUniform1i(blurShaderX-&gt;uniforms[UNI_TEX0],0);
+
+        glVertexAttribPointer(ATTRIB_VERTEX, 2, GL_FLOAT, 0, 0, squareVertices);
+        glEnableVertexAttribArray(ATTRIB_VERTEX);
+        glVertexAttribPointer(ATTRIB_COORDS, 2, GL_FLOAT, 0, 0, textureVertices);
+        glEnableVertexAttribArray(ATTRIB_COORDS);
+
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+        //CHANGE BACK TO REGULAR BLEND
+        glBlendFunc(GL_ONE,GL_ONE_MINUS_SRC_ALPHA);
+
+}
+</code></pre>
+
+<p>Ok, so that&rsquo;s basically all about the code, now we need to talk about shaders beacause they are the 80% of our success here.</p>
+
+<p>As you can see, im rendering to &frac14; of screen to reduce rendering time and pixel shader cost, but it will not look good. So that&rsquo;s why im using blurred image it will hide any glitches that are created by our shafts shader and there is another reason for that. I&rsquo;m using only 15 samples per frame which is terrible low (comparing typically you use around 30-50samples) and makes the screen looks very sharpy and ugly so thats another thing we need to hide. And there is ofcourse another cool feature: we can get some simplified HDRR by doing this.</p>
+
+<p>Blur shaders are simple, you can find this implementation in many places:</p>
+
+<p>HORIZONTAL:</p>
+
+<pre><code class="glsl">attribute vec4 position;
+attribute vec2 inputTextureCoordinate;
+uniform mat4 projection;
+uniform mat4 modelViewWorld;
+
+varying vec2 vTexCoord;
+
+void main()
+{
+    gl_Position = projection * modelViewWorld * position;
+    vTexCoord = inputTextureCoordinate.xy;
+}
+</code></pre>
+
+<pre><code class="glsl">uniform sampler2D RTScene; 
+varying lowp vec2 vTexCoord;
+
+const lowp float blurSize = 1.0/160.0; 
+
+void main(void)
+{
+    mediump vec4 sum = vec4(0.0);
+
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y - 4.0*blurSize)) * 0.05;
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y - 3.0*blurSize)) * 0.09;
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y - 2.0*blurSize)) * 0.12;
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y - blurSize)) * 0.15;
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y)) * 0.16;
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y + blurSize)) * 0.15;
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y + 2.0*blurSize)) * 0.12;
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y + 3.0*blurSize)) * 0.09;
+    sum += texture2D(RTScene, vec2(vTexCoord.x, vTexCoord.y + 4.0*blurSize)) * 0.05;
+
+    gl_FragColor = sum;
+}
+</code></pre>
+
+<p>VERTICAL:</p>
+
+<pre><code class="glsl">attribute vec4 position;
+attribute vec2 inputTextureCoordinate;
+uniform mat4 projection;
+uniform mat4 modelViewWorld;
+
+varying vec2 vTexCoord;
+
+void main()
+{
+    gl_Position = projection * modelViewWorld * position;
+    vTexCoord = inputTextureCoordinate.xy;
+}
+</code></pre>
+
+<pre><code class="glsl">uniform sampler2D RTBlurH; 
+varying lowp vec2 vTexCoord;
+
+const lowp float blurSize = 1.0/240.0;
+
+void main(void)
+{
+    mediump vec4 sum = vec4(0.0);
+
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x - 4.0*blurSize, vTexCoord.y)) * 0.05;
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x - 3.0*blurSize, vTexCoord.y)) * 0.09;
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x - 2.0*blurSize, vTexCoord.y)) * 0.12;
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x - blurSize, vTexCoord.y)) * 0.15;
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x, vTexCoord.y)) * 0.16;
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x + blurSize, vTexCoord.y)) * 0.15;
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x + 2.0*blurSize, vTexCoord.y)) * 0.12;
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x + 3.0*blurSize, vTexCoord.y)) * 0.09;
+    sum += texture2D(RTBlurH, vec2(vTexCoord.x + 4.0*blurSize, vTexCoord.y)) * 0.05;
+
+    gl_FragColor = sum;
+}
+</code></pre>
+
+<p>Now it is time for our main shader, it uses some tricks that allow you to reduce calculation cost:</p>
+
+<pre><code class="glsl">attribute vec4 position;
+attribute vec2 inputTextureCoordinate;
+
+uniform mat4 projection;
+uniform mat4 modelViewWorld;
+uniform vec2 lightSS;
+
+varying vec2 textureCoordinate;
+varying vec2 lightScreen;
+
+void main()
+{
+
+    gl_Position = projection * modelViewWorld * position;
+
+    lightScreen = lightSS;
+    textureCoordinate = inputTextureCoordinate.xy;
+}
+</code></pre>
+
+<pre><code class="glsl">precision mediump float;
+
+uniform lowp sampler2D myTexture;
+uniform lowp float dotlight;
+uniform vec3 lightColor;
+
+varying lowp vec2 textureCoordinate;
+varying lowp vec2 lightScreen;
+
+//here you can manipulate strenght, distance, and final result but current values should be good enought.
+#define Density 0.25
+#define Weight 0.3
+#define Decay 0.99
+#define Exposure 0.15
+
+float illum = 0.0;
+float illuminationDecay = 1.0;
+vec2 deltaTexCoord = vec2( 0.0 );
+vec2 texCoordp = vec2( 0.0 );
+
+//this value should have exacly same number of Sample_It() calls.
+#define NUM_SAMPLES 15.0
+const float InvNumSamples = 1.0 / NUM_SAMPLES ;
+
+void Sample_It(){
+    texCoordp -= deltaTexCoord;
+    //we need to offset step due to low precision on mobile normaly you should use 1.0
+    float sampled = step( 0.99995 , texture2D(myTexture,texCoordp.st).r );
+    illum += sampled * illuminationDecay * Weight * dotlight;
+    illuminationDecay *= Decay;
+}
+
+void main(){
+    texCoordp = textureCoordinate;
+    deltaTexCoord = ( texCoordp - lightScreen ) * InvNumSamples * Density; 
+
+    illum = 0.0;
+    illuminationDecay = 1.0;
+
+    Sample_It(); //1
+    Sample_It(); //2
+    Sample_It(); //3
+    Sample_It(); //4
+    Sample_It(); //5
+    Sample_It(); //6
+    Sample_It(); //7
+    Sample_It(); //8
+    Sample_It(); //9
+    Sample_It(); //10
+    Sample_It(); //11
+    Sample_It(); //12
+    Sample_It(); //13
+    Sample_It(); //14
+    Sample_It(); //15
+
+    gl_FragColor = vec4( vec3( illum * Exposure ) * lightColor, 1.0 );
+
+}
+</code></pre>
+
+<p>And voila! this will generate image with applied shafts to it. Ok so how it acutally works? <br/>
+-You look at depth pixel by pixel  <br/>
+-And check if the distance of it is bigger than specified offset (remember GPU saves depth as 0-1)   <br/>
+-If there is any object on our way it will return 0 color so we have black pixel there     <br/>
+-Otherwise white as we are poiting to infinity, multipled by specified color <br/>
+-Repeat this N times (here I&rsquo;m using 15 samples but you may try to modify this eg on iPhone 4S i was using only 10samples ) <br/>
+-Each time you repeat shift the result by specified direction vector (our sun position in screen space)</p>
+
+<p>This image should explain this good enought:</p>
+
+<p><img class="center" src="/assets/images/lightshafts-explain.jpg" width="800"></p>
+
+<p>Here we can see final result:</p>
+
+<p><div class="embed-video-container"><iframe src="http://www.youtube.com/embed/w6TJuDb0XDo" allowfullscreen></iframe></div></p>
+
+<p>And that&rsquo;s quiet everything i have today, next time again iOS8 ;)</p>
+]]></content>
+  </entry>
+  
+</feed>

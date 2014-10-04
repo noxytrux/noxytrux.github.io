@@ -1,0 +1,1342 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Godrays for mobile devices - Marcin Pędzimąż</title>
+	<meta name="author" content="Marcin Pędzimąż">
+
+	
+	<meta name="description" content="This time I want to talk about one of the best postprocess effect I saw in games. It&rsquo;s called Godrays or Lightshafts depents on people I&rsquo; &hellip;">
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+	<link href="/atom.xml" rel="alternate" title="Marcin Pędzimąż" type="application/atom+xml">
+	<link rel="canonical" href="">
+	<link href="/favicon.png" rel="shortcut icon">
+	<link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+	<!--[if lt IE 9]><script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]-->
+	<script async="true" src="//ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+	
+</head>
+
+
+<body>
+	<header id="header" class="inner"><h1><a href="/">Marcin Pędzimąż</a></h1>
+<nav id="main-nav"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+</ul>
+</nav>
+<nav id="mobile-nav">
+	<div class="alignleft menu">
+		<a class="button">Menu</a>
+		<div class="container"><ul class="main">
+	<li><a href="/">Blog</a></li>
+	<li><a href="/blog/archives">Archives</a></li>
+</ul>
+</div>
+	</div>
+	<div class="alignright search">
+		<a class="button"></a>
+		<div class="container">
+			<form action="https://www.google.com/search" method="get">
+				<input type="text" name="q" results="0">
+				<input type="hidden" name="q" value="site:noxytrux.github.io">
+			</form>
+		</div>
+	</div>
+</nav>
+<nav id="sub-nav" class="alignright">
+	<div class="social">
+		
+		
+		
+		<a class="twitter" href="http://twitter.com/noxytrux" title="Twitter">Twitter</a>
+		
+		
+    
+		
+		
+		
+		
+		
+		<a class="rss" href="/atom.xml" title="RSS">RSS</a>
+		
+    
+	</div>
+	<form class="search" action="https://www.google.com/search" method="get">
+		<input class="alignright" type="text" name="q" results="0">
+		<input type="hidden" name="q" value="site:noxytrux.github.io">
+	</form>
+</nav>
+
+</header>
+	
+		
+	
+	<div id="content" class="inner"><article class="post">
+	<h2 class="title">Godrays for Mobile Devices</h2>
+	<div class="entry-content"><p>This time I want to talk about one of the best postprocess effect I saw in games. It&rsquo;s called <code>Godrays</code> or <code>Lightshafts</code> depents on people I&rsquo;m calling it godrays. Basically it&rsquo;s one of the most challenging effects due to it&rsquo;s horsepower consumption. Today i will show you how to implement low cost Godrays for your mobile game (or PC).</p>
+
+<!--more-->
+
+
+<p>After correct implementation you should see something like that:</p>
+
+<p><img class="center" src="/assets/images/godrays_image.png" width="800"></p>
+
+<p>Awesome isn&rsquo;t it? Everything you see comes from my custom 3D engine that i build some time ago and now i did some finetunings to see how much i can achieve with current mobile phones generation. Demo runs at stable 30FPS having godrays, shadows, full physic etc. If there are any heavy calculations im using dynamic viewport scalling to drop down pixels and save some CPU and GPU calculations.</p>
+
+<p>But enought talking time to show some code, ah before we start keep in mind this is OpenGL ES 2.0 implementation and you can do it even better and faster using ES 3.0 which contains MRT (multiple render target) to save some render passes.</p>
+
+<p>First we need to implement our FBO to store dynamic textures:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+</pre></td><td class='code'><pre><code class='cpp'><span class='line'><span class="cp">#import &lt;Foundation/Foundation.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;OpenGLES/EAGL.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;OpenGLES/ES2/gl.h&gt;</span>
+</span><span class='line'><span class="cp">#import &lt;OpenGLES/ES2/glext.h&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#define glBindVertexArray glBindVertexArrayOES</span>
+</span><span class='line'><span class="cp">#define glGenVertexArrays glGenVertexArraysOES</span>
+</span><span class='line'><span class="cp">#define glDeleteVertexArrays glDeleteVertexArraysOES</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#ifndef FBO_H</span>
+</span><span class='line'><span class="cp">#define FBO_H</span>
+</span><span class='line'><span class="k">enum</span> <span class="n">MRT_TYPE</span> <span class="p">{</span> <span class="n">FBO_2D_COLOR</span><span class="p">,</span> <span class="n">FBO_CUBE_COLOR</span><span class="p">,</span> <span class="n">FBO_2D_DEPTH</span><span class="p">,</span> <span class="n">FBO_2D_DEPTH2</span> <span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+</span><span class='line'>    <span class="n">MRT_TYPE</span>   <span class="n">type</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">int</span>           <span class="n">format</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">GLenum</span>     <span class="n">m_eAttachment</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">GLenum</span>     <span class="n">eTarget</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span> <span class="n">MRTLayer</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">FrameBufferObject</span> <span class="p">{</span>
+</span><span class='line'><span class="k">public</span><span class="o">:</span>
+</span><span class='line'>  <span class="n">MRTLayer</span> <span class="n">own</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">FrameBufferObject</span><span class="p">();</span>
+</span><span class='line'>  <span class="o">~</span><span class="n">FrameBufferObject</span><span class="p">()</span> <span class="p">{</span><span class="n">Destroy</span><span class="p">();}</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">void</span> <span class="n">Add</span><span class="p">(</span><span class="n">MRTLayer</span> <span class="n">Current</span><span class="p">);</span>
+</span><span class='line'>  <span class="kt">bool</span> <span class="nf">CreateNormal</span><span class="p">(</span><span class="n">MRT_TYPE</span> <span class="n">type</span><span class="p">,</span> <span class="kt">int</span> <span class="n">format</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">width</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">height</span><span class="p">);</span>
+</span><span class='line'>  <span class="kt">bool</span> <span class="nf">CreateDepth</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">width</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">height</span><span class="p">);</span>
+</span><span class='line'>    <span class="kt">bool</span> <span class="nf">Create</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">width</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">height</span><span class="p">);</span>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">Destroy</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">Begin</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">nFace</span><span class="p">);</span>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">End</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">nFace</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">Bind</span><span class="p">(</span><span class="n">GLint</span> <span class="n">unit</span><span class="p">,</span> <span class="n">GLint</span> <span class="n">index</span><span class="p">);</span>
+</span><span class='line'>  <span class="kt">void</span> <span class="nf">Unbind</span><span class="p">(</span><span class="n">GLint</span> <span class="n">unit</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">GLuint</span> <span class="nf">getTextureHandle</span><span class="p">(</span><span class="kt">int</span> <span class="n">what</span><span class="p">)</span>   <span class="p">{</span><span class="k">return</span> <span class="n">m_nTexId</span><span class="p">;}</span>
+</span><span class='line'>  <span class="n">GLuint</span> <span class="nf">getWidth</span><span class="p">()</span>     <span class="p">{</span><span class="k">return</span> <span class="n">m_nWidth</span><span class="p">;}</span>
+</span><span class='line'>  <span class="n">GLuint</span> <span class="nf">getHeight</span><span class="p">()</span>    <span class="p">{</span><span class="k">return</span> <span class="n">m_nHeight</span><span class="p">;}</span>
+</span><span class='line'>  <span class="kt">bool</span>   <span class="nf">isError</span><span class="p">()</span> <span class="p">{</span><span class="k">return</span> <span class="o">!</span><span class="n">m_bUseFBO</span><span class="p">;}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>  <span class="kt">bool</span> <span class="nf">CheckStatus</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">GLuint</span>     <span class="n">m_nTexId</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">private</span><span class="o">:</span>
+</span><span class='line'>  <span class="kt">bool</span>        <span class="n">m_bUseFBO</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">bool</span>        <span class="n">m_bUseDepthBuffer</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">GLuint</span>       <span class="n">m_nWidth</span><span class="p">,</span> <span class="n">m_nHeight</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">GLuint</span>       <span class="n">m_nFrameBufferHandle</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">GLuint</span>       <span class="n">m_nDepthBufferHandle</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">GLenum</span>       <span class="n">m_eTextureType</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">GLuint</span>      <span class="n">m_oldBuffer</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'><span class="cp">#endif</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>It is acutally a cpp code because i port it from my old 3D Engine i did when i was working on windows.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+<span class='line-number'>169</span>
+<span class='line-number'>170</span>
+<span class='line-number'>171</span>
+<span class='line-number'>172</span>
+<span class='line-number'>173</span>
+<span class='line-number'>174</span>
+<span class='line-number'>175</span>
+<span class='line-number'>176</span>
+<span class='line-number'>177</span>
+<span class='line-number'>178</span>
+<span class='line-number'>179</span>
+<span class='line-number'>180</span>
+<span class='line-number'>181</span>
+<span class='line-number'>182</span>
+</pre></td><td class='code'><pre><code class='cpp'><span class='line'><span class="cp">#include &quot;FrameBufferObject.h&quot;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">FrameBufferObject</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">m_nFrameBufferHandle</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nDepthBufferHandle</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nTexId</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nWidth</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nHeight</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_bUseFBO</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_oldBuffer</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">Destroy</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">glDeleteTextures</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glDeleteFramebuffers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">m_nFrameBufferHandle</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">if</span><span class="p">(</span><span class="n">m_bUseDepthBuffer</span><span class="p">)</span>
+</span><span class='line'>      <span class="n">glDeleteRenderbuffers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">m_nDepthBufferHandle</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">m_nFrameBufferHandle</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nDepthBufferHandle</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nTexId</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nWidth</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nHeight</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_bUseFBO</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">Add</span><span class="p">(</span><span class="n">MRTLayer</span> <span class="n">Current</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">own</span> <span class="o">=</span> <span class="n">Current</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">Begin</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">nFace</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">assert</span><span class="p">(</span><span class="n">nFace</span><span class="o">&lt;</span><span class="mi">6</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glViewport</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">m_nWidth</span><span class="p">,</span> <span class="n">m_nHeight</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>      
+</span><span class='line'>      <span class="n">glGetIntegerv</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER_BINDING</span><span class="p">,</span> <span class="p">(</span><span class="n">GLint</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">m_oldBuffer</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glBindFramebuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">m_nFrameBufferHandle</span><span class="p">);</span>
+</span><span class='line'>      
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">End</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">nFace</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>      <span class="n">glBindFramebuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">m_oldBuffer</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">Bind</span><span class="p">(</span><span class="n">GLint</span> <span class="n">unit</span><span class="p">,</span> <span class="n">GLint</span> <span class="n">index</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">glActiveTexture</span><span class="p">(</span><span class="n">GL_TEXTURE0</span> <span class="o">+</span> <span class="n">unit</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glEnable</span><span class="p">(</span><span class="n">m_eTextureType</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glBindTexture</span><span class="p">(</span><span class="n">m_eTextureType</span><span class="p">,</span> <span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">Unbind</span><span class="p">(</span><span class="n">GLint</span> <span class="n">unit</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">glActiveTexture</span><span class="p">(</span><span class="n">GL_TEXTURE0</span> <span class="o">+</span> <span class="n">unit</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glBindTexture</span><span class="p">(</span> <span class="n">m_eTextureType</span><span class="p">,</span> <span class="mi">0</span> <span class="p">);</span>
+</span><span class='line'>  <span class="n">glDisable</span><span class="p">(</span><span class="n">m_eTextureType</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">bool</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">Create</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">width</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">height</span><span class="p">){</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">bool</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">CreateNormal</span><span class="p">(</span><span class="n">MRT_TYPE</span> <span class="n">type</span><span class="p">,</span> <span class="kt">int</span> <span class="n">format</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">width</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">height</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">own</span><span class="p">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">type</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">own</span><span class="p">.</span><span class="n">format</span> <span class="o">=</span> <span class="n">format</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Destroy</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">m_nWidth</span> <span class="o">=</span> <span class="n">width</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nHeight</span> <span class="o">=</span> <span class="n">height</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_bUseFBO</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_bUseDepthBuffer</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_eTextureType</span> <span class="o">=</span> <span class="n">GL_TEXTURE_2D</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="c1">//this is very important on mobile devices! you need to keep tracking</span>
+</span><span class='line'>  <span class="c1">//original FBO that iOS creates for you while rendering scene.</span>
+</span><span class='line'>  <span class="n">glGetIntegerv</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER_BINDING</span><span class="p">,</span> <span class="p">(</span><span class="n">GLint</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">m_oldBuffer</span><span class="p">);</span>
+</span><span class='line'>  
+</span><span class='line'>
+</span><span class='line'>  <span class="n">glGenRenderbuffers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">m_nDepthBufferHandle</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glBindRenderbuffer</span><span class="p">(</span><span class="n">GL_RENDERBUFFER</span><span class="p">,</span> <span class="n">m_nDepthBufferHandle</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glRenderbufferStorage</span><span class="p">(</span><span class="n">GL_RENDERBUFFER</span><span class="p">,</span> <span class="n">GL_DEPTH_COMPONENT16</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glBindRenderbuffer</span><span class="p">(</span><span class="n">GL_RENDERBUFFER</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">glGenTextures</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glBindTexture</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glTexParameterf</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_TEXTURE_MAG_FILTER</span><span class="p">,</span> <span class="n">GL_LINEAR</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glTexParameterf</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_TEXTURE_MIN_FILTER</span><span class="p">,</span> <span class="n">GL_LINEAR</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glTexParameterf</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_TEXTURE_WRAP_S</span><span class="p">,</span> <span class="n">GL_CLAMP_TO_EDGE</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glTexParameterf</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_TEXTURE_WRAP_T</span><span class="p">,</span> <span class="n">GL_CLAMP_TO_EDGE</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">glTexParameteri</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_GENERATE_MIPMAP</span><span class="p">,</span> <span class="n">GL_TRUE</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glTexImage2D</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">format</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>  <span class="n">GL_RGBA</span> <span class="p">,</span> <span class="n">GL_UNSIGNED_BYTE</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glBindTexture</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">glGenFramebuffers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">m_nFrameBufferHandle</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glBindFramebuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">m_nFrameBufferHandle</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">glFramebufferTexture2D</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">GL_COLOR_ATTACHMENT0</span><span class="p">,</span> <span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">m_nTexId</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glFramebufferRenderbuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">GL_DEPTH_ATTACHMENT</span><span class="p">,</span> <span class="n">GL_RENDERBUFFER</span><span class="p">,</span> <span class="n">m_nDepthBufferHandle</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">CheckStatus</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glBindFramebuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">m_oldBuffer</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>  <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">bool</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">CreateDepth</span><span class="p">(</span><span class="n">GLuint</span> <span class="n">width</span><span class="p">,</span> <span class="n">GLuint</span> <span class="n">height</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">m_nWidth</span> <span class="o">=</span> <span class="n">width</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">m_nHeight</span> <span class="o">=</span> <span class="n">height</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>    <span class="n">glGetIntegerv</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER_BINDING</span><span class="p">,</span> <span class="p">(</span><span class="n">GLint</span> <span class="o">*</span><span class="p">)</span> <span class="o">&amp;</span><span class="n">m_oldBuffer</span><span class="p">);</span>
+</span><span class='line'>  
+</span><span class='line'>    <span class="n">glGenTextures</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glBindTexture</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glTexParameterf</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_TEXTURE_MAG_FILTER</span><span class="p">,</span> <span class="n">GL_LINEAR</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glTexParameterf</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_TEXTURE_MIN_FILTER</span><span class="p">,</span> <span class="n">GL_LINEAR</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glTexParameterf</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_TEXTURE_WRAP_S</span><span class="p">,</span> <span class="n">GL_CLAMP_TO_EDGE</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glTexParameterf</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">GL_TEXTURE_WRAP_T</span><span class="p">,</span> <span class="n">GL_CLAMP_TO_EDGE</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glTexImage2D</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">GL_DEPTH_STENCIL_OES</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">,</span>
+</span><span class='line'>                 <span class="mi">0</span><span class="p">,</span>
+</span><span class='line'>                 <span class="n">GL_DEPTH_STENCIL_OES</span><span class="p">,</span>
+</span><span class='line'>                 <span class="n">GL_UNSIGNED_INT_24_8_OES</span><span class="p">,</span>
+</span><span class='line'>                 <span class="nb">NULL</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glBindTexture</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glGenFramebuffers</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">m_nFrameBufferHandle</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glBindFramebuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">m_nFrameBufferHandle</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glFramebufferTexture2D</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">GL_DEPTH_ATTACHMENT</span><span class="p">,</span> <span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">m_nTexId</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">CheckStatus</span><span class="p">();</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">glBindFramebuffer</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">,</span> <span class="n">m_oldBuffer</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">bool</span> <span class="n">FrameBufferObject</span><span class="o">::</span><span class="n">CheckStatus</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">switch</span><span class="p">(</span><span class="n">glCheckFramebufferStatus</span><span class="p">(</span><span class="n">GL_FRAMEBUFFER</span><span class="p">))</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nl">GL_FRAMEBUFFER_COMPLETE</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="err">@</span><span class="s">&quot;GL_FRAMEBUFFER_COMPLETE_EXT &quot;</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>          
+</span><span class='line'>      <span class="k">case</span> <span class="nl">GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="err">@</span><span class="s">&quot;GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT &quot;</span><span class="p">);</span>
+</span><span class='line'>          
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>          
+</span><span class='line'>      <span class="k">case</span> <span class="nl">GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="err">@</span><span class="s">&quot;GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT &quot;</span><span class="p">);</span>
+</span><span class='line'>          
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'><span class="cp">#if TARGET_OS_IPHONE </span>
+</span><span class='line'>      <span class="k">case</span> <span class="nl">GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="err">@</span><span class="s">&quot;GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT &quot;</span><span class="p">);</span>
+</span><span class='line'>          
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'><span class="cp">#endif</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nl">GL_FRAMEBUFFER_UNSUPPORTED</span><span class="p">:</span>
+</span><span class='line'>          <span class="n">NSLog</span><span class="p">(</span><span class="err">@</span><span class="s">&quot;GL_FRAMEBUFFER_UNSUPPORTED_EXT &quot;</span><span class="p">);</span>
+</span><span class='line'>          
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>          
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  
+</span><span class='line'>    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now we need some code that will help us render, find and transform sun position to screen space.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='cpp'><span class='line'><span class="c1">//this should be somehow dynamic but it&#39;s tutorial so I&#39;m hardcoding this :)</span>
+</span><span class='line'><span class="kt">float</span> <span class="n">GODRAY_X</span> <span class="o">=</span> <span class="mi">568</span><span class="p">;</span>
+</span><span class='line'><span class="kt">float</span> <span class="n">GODRAY_Y</span> <span class="o">=</span> <span class="mi">320</span><span class="p">;</span>
+</span><span class='line'><span class="kt">float</span> <span class="n">RETINA_SCALE</span> <span class="o">=</span> <span class="mf">2.0f</span><span class="p">;</span>
+</span><span class='line'><span class="kt">float</span> <span class="n">shaftX</span><span class="p">;</span>
+</span><span class='line'><span class="kt">float</span> <span class="n">shaftY</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="k">const</span> <span class="n">GLfloat</span> <span class="n">squareVertices</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>    <span class="o">-</span><span class="n">GODRAY_X</span><span class="p">,</span> <span class="o">-</span><span class="n">GODRAY_Y</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">GODRAY_X</span><span class="p">,</span> <span class="o">-</span><span class="n">GODRAY_Y</span><span class="p">,</span>
+</span><span class='line'>    <span class="o">-</span><span class="n">GODRAY_X</span><span class="p">,</span>  <span class="n">GODRAY_Y</span><span class="p">,</span>
+</span><span class='line'>    <span class="n">GODRAY_X</span><span class="p">,</span>  <span class="n">GODRAY_Y</span><span class="p">,</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">static</span> <span class="k">const</span> <span class="n">GLfloat</span> <span class="n">textureVertices</span><span class="p">[]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>    <span class="mf">0.0f</span><span class="p">,</span> <span class="mf">0.0f</span><span class="p">,</span>
+</span><span class='line'>    <span class="mf">1.0f</span><span class="p">,</span> <span class="mf">0.0f</span><span class="p">,</span>
+</span><span class='line'>    <span class="mf">0.0f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">,</span>
+</span><span class='line'>    <span class="mf">1.0f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">,</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now create our FBO that will keep depth and 2 another that will compose the final image by blurring downscaled image.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='cpp'><span class='line'><span class="n">FrameBufferObject</span> <span class="o">*</span><span class="n">FBO</span><span class="p">;</span>
+</span><span class='line'><span class="n">FrameBufferObject</span> <span class="o">*</span><span class="n">BFBO</span><span class="p">;</span>
+</span><span class='line'><span class="n">FrameBufferObject</span> <span class="o">*</span><span class="n">BFBO2</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">FBO</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FrameBufferObject</span><span class="p">;</span>
+</span><span class='line'><span class="n">FBO</span><span class="o">-&gt;</span><span class="n">CreateDepth</span><span class="p">(</span><span class="n">GODRAY_X</span><span class="p">,</span> <span class="n">GODRAY_Y</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">BFBO</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FrameBufferObject</span><span class="p">;</span>
+</span><span class='line'><span class="n">BFBO</span><span class="o">-&gt;</span><span class="n">CreateNormal</span><span class="p">(</span><span class="n">FBO_2D_COLOR</span><span class="p">,</span> <span class="n">GL_RGBA</span><span class="p">,</span> <span class="n">GODRAY_X</span><span class="p">,</span> <span class="n">GODRAY_Y</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="n">BFBO2</span> <span class="o">=</span> <span class="k">new</span> <span class="n">FrameBufferObject</span><span class="p">;</span>
+</span><span class='line'><span class="n">BFBO2</span><span class="o">-&gt;</span><span class="n">CreateNormal</span><span class="p">(</span><span class="n">FBO_2D_COLOR</span><span class="p">,</span> <span class="n">GL_RGBA</span><span class="p">,</span> <span class="n">GODRAY_X</span><span class="p">,</span> <span class="n">GODRAY_Y</span><span class="p">);</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Remember to dispose resources in dealloc!</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">dealloc</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">FBO</span><span class="o">-&gt;</span><span class="n">Destroy</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">delete</span> <span class="n">FBO</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">BFBO</span><span class="o">-&gt;</span><span class="n">Destroy</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">delete</span> <span class="n">BFBO</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">BFBO2</span><span class="o">-&gt;</span><span class="n">Destroy</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">delete</span> <span class="n">BFBO2</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now time to prepare data, render objects to FBO and compose it to final image</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="kt">void</span> <span class="nf">getLightScreenCoor</span><span class="p">(</span><span class="n">xVec3</span> <span class="n">light</span><span class="p">,</span> <span class="kt">float</span> <span class="o">&amp;</span><span class="n">uniformLightX</span><span class="p">,</span> <span class="kt">float</span> <span class="o">&amp;</span><span class="n">uniformLightY</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">viewport</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">GODRAY_X</span><span class="p">,</span> <span class="n">GODRAY_Y</span><span class="p">};</span>
+</span><span class='line'>    <span class="n">GLKVector3</span> <span class="n">msun</span> <span class="o">=</span> <span class="n">GLKVector3Make</span><span class="p">(</span><span class="n">light</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">light</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">light</span><span class="p">.</span><span class="n">z</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">GLKVector3</span> <span class="n">win</span> <span class="o">=</span> <span class="n">GLKMathProject</span><span class="p">(</span><span class="n">msun</span><span class="p">,</span>
+</span><span class='line'>                                    <span class="n">ModelView</span><span class="p">,</span>
+</span><span class='line'>                                    <span class="n">Projection</span><span class="p">,</span>
+</span><span class='line'>                                    <span class="n">viewport</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">uniformLightX</span> <span class="o">=</span> <span class="n">win</span><span class="p">.</span><span class="n">x</span><span class="o">/</span><span class="n">GODRAY_X</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">uniformLightY</span> <span class="o">=</span> <span class="n">win</span><span class="p">.</span><span class="n">y</span><span class="o">/</span><span class="n">GODRAY_Y</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">glkView:</span><span class="p">(</span><span class="bp">GLKView</span> <span class="o">*</span><span class="p">)</span><span class="nv">view</span> <span class="nf">drawInRect:</span><span class="p">(</span><span class="bp">CGRect</span><span class="p">)</span><span class="nv">rect</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">glClearColor</span><span class="p">(</span><span class="mf">0.65f</span><span class="p">,</span> <span class="mf">0.65f</span><span class="p">,</span> <span class="mf">0.65f</span><span class="p">,</span> <span class="mf">1.0f</span><span class="p">);</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">FBO</span><span class="o">-&gt;</span><span class="n">Begin</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="n">glClear</span><span class="p">(</span><span class="n">GL_COLOR_BUFFER_BIT</span> <span class="o">|</span> <span class="n">GL_DEPTH_BUFFER_BIT</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">//render your objects here and store their depth   </span>
+</span><span class='line'>
+</span><span class='line'>      <span class="p">...</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>    <span class="n">FBO</span><span class="o">-&gt;</span><span class="n">End</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glViewport</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rect</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="o">*</span><span class="n">RETINA_SCALE</span><span class="p">,</span> <span class="n">rect</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="o">*</span><span class="n">RETINA_SCALE</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">glClear</span><span class="p">(</span><span class="n">GL_COLOR_BUFFER_BIT</span> <span class="o">|</span> <span class="n">GL_DEPTH_BUFFER_BIT</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">//NOW RENDER YOUR DATA AGAIN TO OUTPUT FBO</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">...</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">//PROPER LIGHTSHAFTS RENDERING</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">//1st get sun direction vector, find it&#39;s position in 3D space and convert to 2D position</span>
+</span><span class='line'>    <span class="n">xVec3</span> <span class="n">Sun</span> <span class="o">=</span> <span class="n">xVec3</span><span class="p">(</span><span class="o">-</span><span class="mf">0.291719</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.951882</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.093922</span><span class="p">);</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">sunsize</span> <span class="o">=</span> <span class="mf">1.23</span> <span class="o">*</span> <span class="mi">9000</span> <span class="o">-</span> <span class="mi">4000</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">Sun</span> <span class="o">*=</span> <span class="n">sunsize</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">//get 2D position</span>
+</span><span class='line'>    <span class="n">getLightScreenCoor</span><span class="p">(</span><span class="n">Sun</span><span class="p">,</span> <span class="n">shaftX</span><span class="p">,</span> <span class="n">shaftY</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">Sun</span><span class="p">.</span><span class="n">normalize</span><span class="p">();</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">dotlight</span> <span class="o">=</span> <span class="n">eyeDirection</span><span class="p">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Sun</span><span class="p">);</span> <span class="c1">//THIS IS USEFULL FOR CALCUALTING HOW MUCH GOD RAYS POSTPROCESS WE WANT TO APPLY</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">Projection</span> <span class="o">=</span> <span class="n">GLKMatrix4MakeOrtho</span><span class="p">(</span><span class="o">-</span><span class="n">GODRAY_X</span><span class="p">,</span> <span class="n">GODRAY_X</span><span class="p">,</span> <span class="o">-</span><span class="n">GODRAY_Y</span><span class="p">,</span> <span class="n">GODRAY_Y</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1000.0</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">ModelView</span> <span class="o">=</span> <span class="n">GLKMatrix4Identity</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">glClear</span><span class="p">(</span><span class="n">GL_DEPTH_BUFFER_BIT</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">//NOW BUILD OUR SHAFTS TEXTURE</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="c1">//COMPUTE SHAFTS</span>
+</span><span class='line'>        <span class="n">BFBO</span><span class="o">-&gt;</span><span class="n">Begin</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="n">glUseProgram</span><span class="p">(</span><span class="n">ShaftShader</span><span class="o">-&gt;</span><span class="n">ShaderProgram</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">glActiveTexture</span><span class="p">(</span><span class="n">GL_TEXTURE0</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glEnable</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glBindTexture</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">FBO</span><span class="o">-&gt;</span><span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">ShaftShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_PROJECTION_MAT</span><span class="p">],</span> <span class="mi">1</span> <span class="p">,</span><span class="nb">false</span> <span class="p">,</span> <span class="n">Projection</span><span class="p">.</span><span class="n">m</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">ShaftShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_MODELVIEW_WORLD_MAT</span><span class="p">],</span> <span class="mi">1</span> <span class="p">,</span><span class="nb">false</span> <span class="p">,</span> <span class="n">ModelView</span><span class="p">.</span><span class="n">m</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniform1i</span><span class="p">(</span><span class="n">ShaftShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_TEX0</span><span class="p">],</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniform2f</span><span class="p">(</span><span class="n">ShaftShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_SCREEN_POS</span><span class="p">],</span> <span class="n">shaftX</span><span class="p">,</span> <span class="n">shaftY</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniform1f</span><span class="p">(</span><span class="n">ShaftShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_DOT_LIGHT</span><span class="p">],</span> <span class="n">dotlight</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniform3fv</span><span class="p">(</span><span class="n">ShaftShader</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_LIGHT_COLOR</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="n">m_SunColor</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_VERTEX</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">squareVertices</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_VERTEX</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_COORDS</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">textureVertices</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_COORDS</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">glDrawArrays</span><span class="p">(</span><span class="n">GL_TRIANGLE_STRIP</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">BFBO</span><span class="o">-&gt;</span><span class="n">End</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//BLUR VERTICALLY</span>
+</span><span class='line'>        <span class="n">BFBO2</span><span class="o">-&gt;</span><span class="n">Begin</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="n">glUseProgram</span><span class="p">(</span><span class="n">blurShaderY</span><span class="o">-&gt;</span><span class="n">ShaderProgram</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">glActiveTexture</span><span class="p">(</span><span class="n">GL_TEXTURE0</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glEnable</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glBindTexture</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">BFBO</span><span class="o">-&gt;</span><span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">blurShaderY</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_PROJECTION_MAT</span><span class="p">],</span> <span class="mi">1</span> <span class="p">,</span><span class="nb">false</span> <span class="p">,</span> <span class="n">Projection</span><span class="p">.</span><span class="n">m</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">blurShaderY</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_MODELVIEW_WORLD_MAT</span><span class="p">],</span> <span class="mi">1</span> <span class="p">,</span><span class="nb">false</span> <span class="p">,</span> <span class="n">ModelView</span><span class="p">.</span><span class="n">m</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glUniform1i</span><span class="p">(</span><span class="n">blurShaderY</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_TEX0</span><span class="p">],</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_VERTEX</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">squareVertices</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_VERTEX</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_COORDS</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">textureVertices</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_COORDS</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">glDrawArrays</span><span class="p">(</span><span class="n">GL_TRIANGLE_STRIP</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="n">BFBO2</span><span class="o">-&gt;</span><span class="n">End</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//BLUR HORIZONTALLY AND COMPOSE WITH CURRENT IMAGE</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">glViewport</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rect</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">width</span><span class="o">*</span><span class="n">RETINA_SCALE</span><span class="p">,</span> <span class="n">rect</span><span class="p">.</span><span class="n">size</span><span class="p">.</span><span class="n">height</span><span class="o">*</span><span class="n">RETINA_SCALE</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">glBlendFunc</span><span class="p">(</span><span class="n">GL_ONE</span><span class="p">,</span> <span class="n">GL_ONE</span><span class="p">);</span> <span class="c1">//CHANGE TO ADDITIVE BLENDING</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">glUseProgram</span><span class="p">(</span><span class="n">blurShaderX</span><span class="o">-&gt;</span><span class="n">ShaderProgram</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">glActiveTexture</span><span class="p">(</span><span class="n">GL_TEXTURE0</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glEnable</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glBindTexture</span><span class="p">(</span><span class="n">GL_TEXTURE_2D</span><span class="p">,</span> <span class="n">BFBO2</span><span class="o">-&gt;</span><span class="n">m_nTexId</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">blurShaderX</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_PROJECTION_MAT</span><span class="p">],</span> <span class="mi">1</span> <span class="p">,</span><span class="nb">false</span> <span class="p">,</span> <span class="n">Projection</span><span class="p">.</span><span class="n">m</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glUniformMatrix4fv</span><span class="p">(</span><span class="n">blurShaderX</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_MODELVIEW_WORLD_MAT</span><span class="p">],</span> <span class="mi">1</span> <span class="p">,</span><span class="nb">false</span> <span class="p">,</span> <span class="n">ModelView</span><span class="p">.</span><span class="n">m</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glUniform1i</span><span class="p">(</span><span class="n">blurShaderX</span><span class="o">-&gt;</span><span class="n">uniforms</span><span class="p">[</span><span class="n">UNI_TEX0</span><span class="p">],</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_VERTEX</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">squareVertices</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_VERTEX</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glVertexAttribPointer</span><span class="p">(</span><span class="n">ATTRIB_COORDS</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">GL_FLOAT</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">textureVertices</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">glEnableVertexAttribArray</span><span class="p">(</span><span class="n">ATTRIB_COORDS</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">glDrawArrays</span><span class="p">(</span><span class="n">GL_TRIANGLE_STRIP</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="c1">//CHANGE BACK TO REGULAR BLEND</span>
+</span><span class='line'>        <span class="n">glBlendFunc</span><span class="p">(</span><span class="n">GL_ONE</span><span class="p">,</span><span class="n">GL_ONE_MINUS_SRC_ALPHA</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Ok, so that&rsquo;s basically all about the code, now we need to talk about shaders beacause they are the 80% of our success here.</p>
+
+<p>As you can see, im rendering to &frac14; of screen to reduce rendering time and pixel shader cost, but it will not look good. So that&rsquo;s why im using blurred image it will hide any glitches that are created by our shafts shader and there is another reason for that. I&rsquo;m using only 15 samples per frame which is terrible low (comparing typically you use around 30-50samples) and makes the screen looks very sharpy and ugly so thats another thing we need to hide. And there is ofcourse another cool feature: we can get some simplified HDRR by doing this.</p>
+
+<p>Blur shaders are simple, you can find this implementation in many places:</p>
+
+<p>HORIZONTAL:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='glsl'><span class='line'><span class="k">attribute</span> <span class="k">vec4</span> <span class="n">position</span><span class="p">;</span>
+</span><span class='line'><span class="k">attribute</span> <span class="k">vec2</span> <span class="n">inputTextureCoordinate</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span>    <span class="k">mat4</span> <span class="n">projection</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">mat4</span> <span class="n">modelViewWorld</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">varying</span> <span class="k">vec2</span> <span class="n">vTexCoord</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">gl_Position</span> <span class="o">=</span> <span class="n">projection</span> <span class="o">*</span> <span class="n">modelViewWorld</span> <span class="o">*</span> <span class="n">position</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">vTexCoord</span> <span class="o">=</span> <span class="n">inputTextureCoordinate</span><span class="p">.</span><span class="n">xy</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='glsl'><span class='line'><span class="k">uniform</span> <span class="k">sampler2D</span> <span class="n">RTScene</span><span class="p">;</span>
+</span><span class='line'><span class="k">varying</span> <span class="k">lowp</span> <span class="k">vec2</span> <span class="n">vTexCoord</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">const</span> <span class="k">lowp</span> <span class="k">float</span> <span class="n">blurSize</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="mf">160.0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">main</span><span class="p">(</span><span class="k">void</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">mediump</span> <span class="k">vec4</span> <span class="n">sum</span> <span class="o">=</span> <span class="k">vec4</span><span class="p">(</span><span class="mf">0.0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="mf">4.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="mf">3.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.09</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.12</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">blurSize</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.15</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.16</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span> <span class="o">+</span> <span class="n">blurSize</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.15</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span> <span class="o">+</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.12</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span> <span class="o">+</span> <span class="mf">3.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.09</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTScene</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span> <span class="o">+</span> <span class="mf">4.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">gl_FragColor</span> <span class="o">=</span> <span class="n">sum</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>VERTICAL:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class='glsl'><span class='line'><span class="k">attribute</span> <span class="k">vec4</span> <span class="n">position</span><span class="p">;</span>
+</span><span class='line'><span class="k">attribute</span> <span class="k">vec2</span> <span class="n">inputTextureCoordinate</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span>    <span class="k">mat4</span> <span class="n">projection</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">mat4</span> <span class="n">modelViewWorld</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">varying</span> <span class="k">vec2</span> <span class="n">vTexCoord</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">gl_Position</span> <span class="o">=</span> <span class="n">projection</span> <span class="o">*</span> <span class="n">modelViewWorld</span> <span class="o">*</span> <span class="n">position</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">vTexCoord</span> <span class="o">=</span> <span class="n">inputTextureCoordinate</span><span class="p">.</span><span class="n">xy</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+</pre></td><td class='code'><pre><code class='glsl'><span class='line'><span class="k">uniform</span> <span class="k">sampler2D</span> <span class="n">RTBlurH</span><span class="p">;</span>
+</span><span class='line'><span class="k">varying</span> <span class="k">lowp</span> <span class="k">vec2</span> <span class="n">vTexCoord</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">const</span> <span class="k">lowp</span> <span class="k">float</span> <span class="n">blurSize</span> <span class="o">=</span> <span class="mf">1.0</span><span class="o">/</span><span class="mf">240.0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">main</span><span class="p">(</span><span class="k">void</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">mediump</span> <span class="k">vec4</span> <span class="n">sum</span> <span class="o">=</span> <span class="k">vec4</span><span class="p">(</span><span class="mf">0.0</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="mf">4.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="mf">3.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.09</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.12</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">blurSize</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.15</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.16</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">blurSize</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.15</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span> <span class="o">+</span> <span class="mf">2.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.12</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span> <span class="o">+</span> <span class="mf">3.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.09</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">sum</span> <span class="o">+=</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">RTBlurH</span><span class="p">,</span> <span class="k">vec2</span><span class="p">(</span><span class="n">vTexCoord</span><span class="p">.</span><span class="n">x</span> <span class="o">+</span> <span class="mf">4.0</span><span class="o">*</span><span class="n">blurSize</span><span class="p">,</span> <span class="n">vTexCoord</span><span class="p">.</span><span class="n">y</span><span class="p">))</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">gl_FragColor</span> <span class="o">=</span> <span class="n">sum</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now it is time for our main shader, it uses some tricks that allow you to reduce calculation cost:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+</pre></td><td class='code'><pre><code class='glsl'><span class='line'><span class="k">attribute</span> <span class="k">vec4</span> <span class="n">position</span><span class="p">;</span>
+</span><span class='line'><span class="k">attribute</span> <span class="k">vec2</span> <span class="n">inputTextureCoordinate</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">uniform</span>    <span class="k">mat4</span> <span class="n">projection</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">mat4</span> <span class="n">modelViewWorld</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">vec2</span> <span class="n">lightSS</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">varying</span> <span class="k">vec2</span> <span class="n">textureCoordinate</span><span class="p">;</span>
+</span><span class='line'><span class="k">varying</span> <span class="k">vec2</span> <span class="n">lightScreen</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">gl_Position</span> <span class="o">=</span> <span class="n">projection</span> <span class="o">*</span> <span class="n">modelViewWorld</span> <span class="o">*</span> <span class="n">position</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">lightScreen</span> <span class="o">=</span> <span class="n">lightSS</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">textureCoordinate</span> <span class="o">=</span> <span class="n">inputTextureCoordinate</span><span class="p">.</span><span class="n">xy</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+</pre></td><td class='code'><pre><code class='glsl'><span class='line'><span class="k">precision</span> <span class="k">mediump</span> <span class="k">float</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">uniform</span> <span class="k">lowp</span> <span class="k">sampler2D</span> <span class="n">myTexture</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">lowp</span> <span class="k">float</span> <span class="n">dotlight</span><span class="p">;</span>
+</span><span class='line'><span class="k">uniform</span> <span class="k">vec3</span> <span class="n">lightColor</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">varying</span> <span class="k">lowp</span> <span class="k">vec2</span> <span class="n">textureCoordinate</span><span class="p">;</span>
+</span><span class='line'><span class="k">varying</span> <span class="k">lowp</span> <span class="k">vec2</span> <span class="n">lightScreen</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//here you can manipulate strenght, distance, and final result but current values should be good enought.</span>
+</span><span class='line'><span class="cp">#define Density 0.25</span>
+</span><span class='line'><span class="cp">#define Weight 0.3</span>
+</span><span class='line'><span class="cp">#define Decay 0.99</span>
+</span><span class='line'><span class="cp">#define Exposure 0.15</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">float</span> <span class="n">illum</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+</span><span class='line'><span class="k">float</span> <span class="n">illuminationDecay</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
+</span><span class='line'><span class="k">vec2</span> <span class="n">deltaTexCoord</span> <span class="o">=</span> <span class="k">vec2</span><span class="p">(</span> <span class="mf">0.0</span> <span class="p">);</span>
+</span><span class='line'><span class="k">vec2</span> <span class="n">texCoordp</span> <span class="o">=</span> <span class="k">vec2</span><span class="p">(</span> <span class="mf">0.0</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//this value should have exacly same number of Sample_It() calls.</span>
+</span><span class='line'><span class="cp">#define NUM_SAMPLES 15.0</span>
+</span><span class='line'><span class="k">const</span> <span class="k">float</span> <span class="n">InvNumSamples</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">NUM_SAMPLES</span> <span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">Sample_It</span><span class="p">(){</span>
+</span><span class='line'>    <span class="n">texCoordp</span> <span class="o">-=</span> <span class="n">deltaTexCoord</span><span class="p">;</span>
+</span><span class='line'>    <span class="c1">//we need to offset step due to low precision on mobile normaly you should use 1.0</span>
+</span><span class='line'>    <span class="k">float</span> <span class="n">sampled</span> <span class="o">=</span> <span class="n">step</span><span class="p">(</span> <span class="mf">0.99995</span> <span class="p">,</span> <span class="n">texture2D</span><span class="p">(</span><span class="n">myTexture</span><span class="p">,</span><span class="n">texCoordp</span><span class="p">.</span><span class="n">st</span><span class="p">).</span><span class="n">r</span> <span class="p">);</span>
+</span><span class='line'>    <span class="n">illum</span> <span class="o">+=</span> <span class="n">sampled</span> <span class="o">*</span> <span class="n">illuminationDecay</span> <span class="o">*</span> <span class="n">Weight</span> <span class="o">*</span> <span class="n">dotlight</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">illuminationDecay</span> <span class="o">*=</span> <span class="n">Decay</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">void</span> <span class="n">main</span><span class="p">(){</span>
+</span><span class='line'>  <span class="n">texCoordp</span> <span class="o">=</span> <span class="n">textureCoordinate</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">deltaTexCoord</span> <span class="o">=</span> <span class="p">(</span> <span class="n">texCoordp</span> <span class="o">-</span> <span class="n">lightScreen</span> <span class="p">)</span> <span class="o">*</span> <span class="n">InvNumSamples</span> <span class="o">*</span> <span class="n">Density</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>  <span class="n">illum</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">illuminationDecay</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
+</span><span class='line'>  
+</span><span class='line'>  <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//1</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//2</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//3</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//4</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//5</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//6</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//7</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//8</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//9</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//10</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//11</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//12</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//13</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//14</span>
+</span><span class='line'>    <span class="n">Sample_It</span><span class="p">();</span> <span class="c1">//15</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">gl_FragColor</span> <span class="o">=</span> <span class="k">vec4</span><span class="p">(</span> <span class="k">vec3</span><span class="p">(</span> <span class="n">illum</span> <span class="o">*</span> <span class="n">Exposure</span> <span class="p">)</span> <span class="o">*</span> <span class="n">lightColor</span><span class="p">,</span> <span class="mf">1.0</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And voila! this will generate image with applied shafts to it. Ok so how it acutally works? <br/>
+-You look at depth pixel by pixel  <br/>
+-And check if the distance of it is bigger than specified offset (remember GPU saves depth as 0-1)   <br/>
+-If there is any object on our way it will return 0 color so we have black pixel there     <br/>
+-Otherwise white as we are poiting to infinity, multipled by specified color <br/>
+-Repeat this N times (here I&rsquo;m using 15 samples but you may try to modify this eg on iPhone 4S i was using only 10samples ) <br/>
+-Each time you repeat shift the result by specified direction vector (our sun position in screen space)</p>
+
+<p>This image should explain this good enought:</p>
+
+<p><img class="center" src="/assets/images/lightshafts-explain.jpg" width="800"></p>
+
+<p>Here we can see final result:</p>
+
+<div class="embed-video-container"><iframe src="http://www.youtube.com/embed/w6TJuDb0XDo" allowfullscreen></iframe></div>
+
+
+<p>And that&rsquo;s quiet everything i have today, next time again iOS8 ;)</p>
+</div>
+
+
+<div class="meta">
+	<div class="date">
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2014-10-04T18:00:41+02:00" pubdate data-updated="true"></time></div>
+	<div class="tags">
+
+
+	<a class='category' href='/blog/categories/godrays/'>godrays</a>, <a class='category' href='/blog/categories/ios/'>ios</a>, <a class='category' href='/blog/categories/opengl-es2-dot-0/'>opengl es2.0</a>
+
+
+</div>
+	
+</div>
+</article>
+
+	<div class="share">
+	<div class="addthis_toolbox addthis_default_style ">
+		
+		
+		<a class="addthis_button_tweet"></a>
+		
+		
+		
+	</div>
+	
+</div>
+
+
+</div>
+	<footer id="footer" class="inner">Copyright &copy; 2014
+
+    Marcin Pędzimąż
+
+</footer>
+	<script src="/javascripts/slash.js"></script>
+<script src="/javascripts/jquery.fancybox.pack.js"></script>
+<script type="text/javascript">
+(function($){
+	$('.fancybox').fancybox();
+})(jQuery);
+</script> <!-- Delete or comment this line to disable Fancybox -->
+
+
+
+
+
+
+</body>
+</html>
