@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: urlsessiontask | Marcin Pędzimąż]]></title>
+  <link href="http://noxytrux.github.io/blog/categories/urlsessiontask/atom.xml" rel="self"/>
+  <link href="http://noxytrux.github.io/"/>
+  <updated>2014-10-09T14:15:30+02:00</updated>
+  <id>http://noxytrux.github.io/</id>
+  <author>
+    <name><![CDATA[Marcin Pędzimąż]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[iOS8 weirdness Part4: URLSessionTask]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/10/05/ios8-weirdness-part4-urlsessiontask/"/>
+    <updated>2014-10-05T16:25:48+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/10/05/ios8-weirdness-part4-urlsessiontask</id>
+    <content type="html"><![CDATA[<p>This post is one of those short ones. Again I&rsquo;m confused how switching from one iOS to another may transform your day to a horror. So what is this all about, if you are typical user of <code>NSURLConnection</code> you should acutally know that Apple introduces <code>NSURLSession</code> as a new way to handle networking. And if somethings goes wrong you need to handle it somehow&hellip;</p>
+
+<!--more-->
+
+
+<p>And this is where all things starting to be tricky; typically in iOS7 when you get an error from your request you handle it in some fail block passing <code>NSError</code> so my today talk is actually about <code>NSError</code>. Sometimes you need to handle paritcular error in way that is more readable for your user eg.: connecting to VPN, Timeouting etc. So let&rsquo;s say the error that is contained in <code>NSError</code> class need to be modified to something more readable eg by using CODE and DOMAIN to specify what we should actually show to the user. But in most of cases NSError contains quiet good description and it&rsquo;s even localized! But not in iOS8&hellip;</p>
+
+<p>Some time ago i saw empty <code>UIAlertView</code> in some of the app i was working on. So i start digging what acutally happens, few minutes with debugger show me that <code>NSURLSessionTask</code> retuns <code>NSError</code> if something fails but it do not contains <code>NSLocalizedDescriptionKey</code> in userInfo the key is acutally missing! And using localizedDescription property also retuns some very unfriendly messages. So lets see what you will see in debugger:</p>
+
+<p>iOS7.1:</p>
+
+<pre><code class="c++">(lldb) po self.userInfo
+{
+    NSErrorFailingURLKey = "https://yourservername.com:8080/login/";
+    NSErrorFailingURLStringKey = "https://yourservername.com:8080/login/";
+    NSLocalizedDescription = "A server with the specified hostname could not be found.";
+    NSUnderlyingError = "Error Domain=kCFErrorDomainCFNetwork Code=-1003 \"A server with the specified hostname could not be found.\" UserInfo=0x7ce56df0 {NSErrorFailingURLKey=https://yourservername.com:8080/login/, NSErrorFailingURLStringKey=https://yourservername.com:8080/login/, NSLocalizedDescription=A server with the specified hostname could not be found.}";
+}
+</code></pre>
+
+<p>As you can see we can find <code>NSLocalizedDescription</code> ther. Now let&rsquo;s try to run same code on iOS8:</p>
+
+<pre><code class="c++">(lldb) po self.userInfo
+{
+    NSErrorFailingURLKey = "https://yourservername.com:8080/login/";
+    NSErrorFailingURLStringKey = "https://yourservername.com:8080/login/";
+    NSUnderlyingError = "Error Domain=kCFErrorDomainCFNetwork Code=-1003 \"The operation couldn\U2019t be completed. (kCFErrorDomainCFNetwork error -1003.)\" UserInfo=0x7c31fad0 {_kCFStreamErrorDomainKey=12, _kCFStreamErrorCodeKey=8}";
+    "_kCFStreamErrorCodeKey" = 8;
+    "_kCFStreamErrorDomainKey" = 12;
+}
+</code></pre>
+
+<p>As i said no <code>NSLocalizedDescription</code> at all, the worst thing is that no matter error your connection will generate, it will be always called the same <b>&ldquo;The operation couldn&rsquo;t be completed.&rdquo;</b> So if you have some production build and you try to get some info from your user, you are in serious trouble. The only way to fix this for now is to build some extension that will convert CODE and DOMAIN to apropriate error message.</p>
+
+<pre><code class="objc">@import UIKit;
+
+//some typical error codes
+const NSInteger kServerNotFoundCode = -1003;
+const NSInteger kVPNCode = -1005;
+const NSInteger kTimeoutCode = -1001;
+
+@implementation NSError (Utilities)
+
+- (void)getDisplayTitle:(NSString * __autoreleasing *)title message:(NSString * __autoreleasing *)message
+
+{
+
+    *title = NSLocalizedString(@"error_label_title",nil);
+
+        if ([self.domain isEqualToString:NSURLErrorDomain] == YES) {
+
+            switch( self.code ) {
+
+                case kVPNCode :
+                    *message = NSLocalizedString(@"error_label_message_vpnnotenabled", nil);
+                    break;
+
+                case kServerNotFoundCode: 
+                    *message = NSLocalizedString(@"error_label_message_servernotfound", nil);
+                    break;
+
+                case kTimeoutCode:
+                    *message = NSLocalizedString(@"error_label_message_requesttimeout", nil);
+                    break;
+
+                case default:
+                    *message = self.localizedDescription;
+                    break;
+            }
+
+        }
+        else {
+
+           // unknow error or we don't know how to handle this display ugly info.
+           *message = self.localizedDescription;
+        }
+
+}
+</code></pre>
+
+<p>And how to use it:</p>
+
+<pre><code class="objc">
+- (void)failWithError:(NSError *)error
+{
+
+     NSString *title, *message;
+
+    [error getDisplayTitle:&amp;title 
+                   message:&amp;message];
+
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle:title
+                                                    message:message
+                                                   delegate:nil
+                                          cancelButtonTitle:NSLocalizedString(@"error_label_ok", nil)
+                                          otherButtonTitles:nil];
+    [alert show];
+}
+</code></pre>
+
+<p>Of course you may need to handle way more cases here so it is good to check all <a href="https://developer.apple.com/library/mac/documentation/Cocoa/Reference/Foundation/Miscellaneous/Foundation_Constants/Reference/reference.html#//apple_ref/doc/uid/TP40003793-CH3g-SW40">code list</a> in documentation. In this example im using localization to support multiple languages by myself if you do not need to do that just simply type there your description.</p>
+
+<p>And that&#8217;a all for today, next time some swift cool features.</p>
+]]></content>
+  </entry>
+  
+</feed>

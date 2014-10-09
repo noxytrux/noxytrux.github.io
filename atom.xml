@@ -4,7 +4,7 @@
   <title><![CDATA[Marcin Pędzimąż]]></title>
   <link href="http://noxytrux.github.io/atom.xml" rel="self"/>
   <link href="http://noxytrux.github.io/"/>
-  <updated>2014-10-04T23:48:28+02:00</updated>
+  <updated>2014-10-09T14:15:30+02:00</updated>
   <id>http://noxytrux.github.io/</id>
   <author>
     <name><![CDATA[Marcin Pędzimąż]]></name>
@@ -12,6 +12,194 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[iOS8 weirdness Part4: URLSessionTask]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/10/05/ios8-weirdness-part4-urlsessiontask/"/>
+    <updated>2014-10-05T16:25:48+02:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/10/05/ios8-weirdness-part4-urlsessiontask</id>
+    <content type="html"><![CDATA[<p>This post is one of those short ones. Again I&rsquo;m confused how switching from one iOS to another may transform your day to a horror. So what is this all about, if you are typical user of <code>NSURLConnection</code> you should acutally know that Apple introduces <code>NSURLSession</code> as a new way to handle networking. And if somethings goes wrong you need to handle it somehow&hellip;</p>
+
+<!--more-->
+
+
+<p>And this is where all things starting to be tricky; typically in iOS7 when you get an error from your request you handle it in some fail block passing <code>NSError</code> so my today talk is actually about <code>NSError</code>. Sometimes you need to handle paritcular error in way that is more readable for your user eg.: connecting to VPN, Timeouting etc. So let&rsquo;s say the error that is contained in <code>NSError</code> class need to be modified to something more readable eg by using CODE and DOMAIN to specify what we should actually show to the user. But in most of cases NSError contains quiet good description and it&rsquo;s even localized! But not in iOS8&hellip;</p>
+
+<p>Some time ago i saw empty <code>UIAlertView</code> in some of the app i was working on. So i start digging what acutally happens, few minutes with debugger show me that <code>NSURLSessionTask</code> retuns <code>NSError</code> if something fails but it do not contains <code>NSLocalizedDescriptionKey</code> in userInfo the key is acutally missing! And using localizedDescription property also retuns some very unfriendly messages. So lets see what you will see in debugger:</p>
+
+<p>iOS7.1:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">po</span> <span class="n">self</span><span class="p">.</span><span class="n">userInfo</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">NSErrorFailingURLKey</span> <span class="o">=</span> <span class="s">&quot;https://yourservername.com:8080/login/&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">NSErrorFailingURLStringKey</span> <span class="o">=</span> <span class="s">&quot;https://yourservername.com:8080/login/&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">NSLocalizedDescription</span> <span class="o">=</span> <span class="s">&quot;A server with the specified hostname could not be found.&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">NSUnderlyingError</span> <span class="o">=</span> <span class="s">&quot;Error Domain=kCFErrorDomainCFNetwork Code=-1003 </span><span class="se">\&quot;</span><span class="s">A server with the specified hostname could not be found.</span><span class="se">\&quot;</span><span class="s"> UserInfo=0x7ce56df0 {NSErrorFailingURLKey=https://yourservername.com:8080/login/, NSErrorFailingURLStringKey=https://yourservername.com:8080/login/, NSLocalizedDescription=A server with the specified hostname could not be found.}&quot;</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As you can see we can find <code>NSLocalizedDescription</code> ther. Now let&rsquo;s try to run same code on iOS8:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="p">(</span><span class="n">lldb</span><span class="p">)</span> <span class="n">po</span> <span class="n">self</span><span class="p">.</span><span class="n">userInfo</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">NSErrorFailingURLKey</span> <span class="o">=</span> <span class="s">&quot;https://yourservername.com:8080/login/&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">NSErrorFailingURLStringKey</span> <span class="o">=</span> <span class="s">&quot;https://yourservername.com:8080/login/&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">NSUnderlyingError</span> <span class="o">=</span> <span class="s">&quot;Error Domain=kCFErrorDomainCFNetwork Code=-1003 </span><span class="se">\&quot;</span><span class="s">The operation couldn\U2019t be completed. (kCFErrorDomainCFNetwork error -1003.)</span><span class="se">\&quot;</span><span class="s"> UserInfo=0x7c31fad0 {_kCFStreamErrorDomainKey=12, _kCFStreamErrorCodeKey=8}&quot;</span><span class="p">;</span>
+</span><span class='line'>    <span class="s">&quot;_kCFStreamErrorCodeKey&quot;</span> <span class="o">=</span> <span class="mi">8</span><span class="p">;</span>
+</span><span class='line'>    <span class="s">&quot;_kCFStreamErrorDomainKey&quot;</span> <span class="o">=</span> <span class="mi">12</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>As i said no <code>NSLocalizedDescription</code> at all, the worst thing is that no matter error your connection will generate, it will be always called the same <b>&ldquo;The operation couldn&rsquo;t be completed.&rdquo;</b> So if you have some production build and you try to get some info from your user, you are in serious trouble. The only way to fix this for now is to build some extension that will convert CODE and DOMAIN to apropriate error message.</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="p">@</span><span class="n">import</span> <span class="n">UIKit</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">//some typical error codes</span>
+</span><span class='line'><span class="k">const</span> <span class="bp">NSInteger</span> <span class="n">kServerNotFoundCode</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1003</span><span class="p">;</span>
+</span><span class='line'><span class="k">const</span> <span class="bp">NSInteger</span> <span class="n">kVPNCode</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1005</span><span class="p">;</span>
+</span><span class='line'><span class="k">const</span> <span class="bp">NSInteger</span> <span class="n">kTimeoutCode</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1001</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">@implementation</span> <span class="bp">NSError</span> <span class="nl">(Utilities)</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">getDisplayTitle:</span><span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span> <span class="k">__autoreleasing</span> <span class="o">*</span><span class="p">)</span><span class="nv">title</span> <span class="nf">message:</span><span class="p">(</span><span class="bp">NSString</span> <span class="o">*</span> <span class="k">__autoreleasing</span> <span class="o">*</span><span class="p">)</span><span class="nv">message</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">*</span><span class="n">title</span> <span class="o">=</span> <span class="n">NSLocalizedString</span><span class="p">(</span><span class="s">@&quot;error_label_title&quot;</span><span class="p">,</span><span class="nb">nil</span><span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'>      <span class="k">if</span> <span class="p">([</span><span class="nb">self</span><span class="p">.</span><span class="n">domain</span> <span class="nl">isEqualToString</span><span class="p">:</span><span class="n">NSURLErrorDomain</span><span class="p">]</span> <span class="o">==</span> <span class="nb">YES</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="k">switch</span><span class="p">(</span> <span class="nb">self</span><span class="p">.</span><span class="n">code</span> <span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="k">case</span> <span class="nl">kVPNCode</span> <span class="p">:</span>
+</span><span class='line'>                  <span class="o">*</span><span class="n">message</span> <span class="o">=</span> <span class="n">NSLocalizedString</span><span class="p">(</span><span class="s">@&quot;error_label_message_vpnnotenabled&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+</span><span class='line'>                  <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="k">case</span> <span class="nl">kServerNotFoundCode</span><span class="p">:</span>
+</span><span class='line'>                  <span class="o">*</span><span class="n">message</span> <span class="o">=</span> <span class="n">NSLocalizedString</span><span class="p">(</span><span class="s">@&quot;error_label_message_servernotfound&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+</span><span class='line'>                  <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>              <span class="k">case</span> <span class="nl">kTimeoutCode</span><span class="p">:</span>
+</span><span class='line'>                  <span class="o">*</span><span class="n">message</span> <span class="o">=</span> <span class="n">NSLocalizedString</span><span class="p">(</span><span class="s">@&quot;error_label_message_requesttimeout&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">);</span>
+</span><span class='line'>                  <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>                  <span class="k">case</span> <span class="k">default</span><span class="o">:</span>
+</span><span class='line'>                      <span class="o">*</span><span class="n">message</span> <span class="o">=</span> <span class="nb">self</span><span class="p">.</span><span class="n">localizedDescription</span><span class="p">;</span>
+</span><span class='line'>                      <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>           <span class="c1">// unknow error or we don&#39;t know how to handle this display ugly info.</span>
+</span><span class='line'>           <span class="o">*</span><span class="n">message</span> <span class="o">=</span> <span class="nb">self</span><span class="p">.</span><span class="n">localizedDescription</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And how to use it:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+</pre></td><td class='code'><pre><code class='objc'><span class='line'><span class="p">-</span> <span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="nf">failWithError:</span><span class="p">(</span><span class="bp">NSError</span> <span class="o">*</span><span class="p">)</span><span class="nv">error</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'>   <span class="bp">NSString</span> <span class="o">*</span><span class="n">title</span><span class="p">,</span> <span class="o">*</span><span class="n">message</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="p">[</span><span class="n">error</span> <span class="nl">getDisplayTitle</span><span class="p">:</span><span class="o">&amp;</span><span class="n">title</span>
+</span><span class='line'>                 <span class="nl">message</span><span class="p">:</span><span class="o">&amp;</span><span class="n">message</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="bp">UIAlertView</span> <span class="o">*</span><span class="n">alert</span> <span class="o">=</span> <span class="p">[[</span><span class="bp">UIAlertView</span> <span class="n">alloc</span><span class="p">]</span> <span class="nl">initWithTitle</span><span class="p">:</span><span class="n">title</span>
+</span><span class='line'>                                                    <span class="nl">message</span><span class="p">:</span><span class="n">message</span>
+</span><span class='line'>                                                   <span class="nl">delegate</span><span class="p">:</span><span class="nb">nil</span>
+</span><span class='line'>                                          <span class="nl">cancelButtonTitle</span><span class="p">:</span><span class="n">NSLocalizedString</span><span class="p">(</span><span class="s">@&quot;error_label_ok&quot;</span><span class="p">,</span> <span class="nb">nil</span><span class="p">)</span>
+</span><span class='line'>                                          <span class="nl">otherButtonTitles</span><span class="p">:</span><span class="nb">nil</span><span class="p">];</span>
+</span><span class='line'>    <span class="p">[</span><span class="n">alert</span> <span class="n">show</span><span class="p">];</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Of course you may need to handle way more cases here so it is good to check all <a href="https://developer.apple.com/library/mac/documentation/Cocoa/Reference/Foundation/Miscellaneous/Foundation_Constants/Reference/reference.html#//apple_ref/doc/uid/TP40003793-CH3g-SW40">code list</a> in documentation. In this example im using localization to support multiple languages by myself if you do not need to do that just simply type there your description.</p>
+
+<p>And that&#8217;a all for today, next time some swift cool features.</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Godrays for mobile devices]]></title>
