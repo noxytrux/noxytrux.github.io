@@ -1,0 +1,495 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: ux | Marcin Pędzimąż]]></title>
+  <link href="http://noxytrux.github.io/blog/categories/ux/atom.xml" rel="self"/>
+  <link href="http://noxytrux.github.io/"/>
+  <updated>2014-12-30T21:25:21+01:00</updated>
+  <id>http://noxytrux.github.io/</id>
+  <author>
+    <name><![CDATA[Marcin Pędzimąż]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Advanced iOS animations]]></title>
+    <link href="http://noxytrux.github.io/blog/2014/12/26/advanced-ios-animations/"/>
+    <updated>2014-12-26T17:27:15+01:00</updated>
+    <id>http://noxytrux.github.io/blog/2014/12/26/advanced-ios-animations</id>
+    <content type="html"><![CDATA[<p>This post will be probably very long and will cover a lot about making your app as juicy as possible. Best iOS apps have heavily animated UI and guide users by themselves so today we will talk about how to take advantages of all new xCode features, and how design app or how to use eyes in terms of imagining your app being animated.</p>
+
+<!--more-->
+
+
+<p>There are some very basic skills that you need to become iOS dev, good knowing of API is a 80% of your success to become good iOS developer. Old wolfs who were starting from 3.2 know what kind of hell we actually have to pass to get today&rsquo;s ARC, IB improvements and much more. But there is something that can make you become one of those ninjas who put his &ldquo;wow&rdquo; effect to every app they touch. Today I will show you how to convert simple record app to something breathtaking. It will be first part of record app tutorial connected with Core Audio (I will talk about CA next time.) but today we focus only on design, interface builder and last but not least animations of user interface.</p>
+
+<p>There are some things that you actually need to learn if you want to survive in iOS world and most of all become a SWAT team member of iOS developers, those things are:</p>
+
+<ul>
+<li>Learn GIMP or Photoshop</li>
+<li>If you don&rsquo;t want to learn photoshop at least you should know how to import colors, fonts etc.</li>
+<li>Buy notepad and some pencils.</li>
+<li>Spend a lot time experimenting with UIAnimations and Gesture Recognizers</li>
+<li>Read documentation! (even those old 4.X API)</li>
+<li>Attend to Hackatons.</li>
+<li>Fail a lot :) without that you cannot learn</li>
+<li>Take criticism (this one is probably most important)</li>
+<li>Learn OpenGL</li>
+<li>And much more ;)</li>
+</ul>
+
+
+<p>More time you spend on all of this less time you will need to build an iOS app. Look at the video below i build a project for this post in one day and put even to much animations but i want to show you how to make your app feel alive, and tell user he can interact with it. It gives this feeling of &ldquo;doing something&rdquo; all the time.</p>
+
+<p><div class="embed-video-container"><iframe src="http://www.youtube.com/embed/y9o2fGH6oYo" allowfullscreen></iframe></div></p>
+
+<p>So how i achieve this ? Most of all hard work but there are some key things that will allow you to do the same ;)</p>
+
+<p><b>GIMP</b></p>
+
+<p>Knowing at least one graphic editor will let you save a lot of time and work. Even if you are not a master chief graphic designer with good hand. You can still at least modify or draw your own simple assets. And most important if your UI guy is on vacation and you just need to resize asset, or put some alpha on it you can do it by yourself, common it&rsquo;s not a rocket science.</p>
+
+<p><b>PHOTOSHOP</b></p>
+
+<p>More advanced tool and not cheap but most companies have it so you can still sit with graphic and look how he/she do some stuff or ask him/her how to use some basic functions. e.g: most design are done in photoshop so instead of getting UI image and some guides why not to ask to get PSD so you can import all directly from PSD to xCode by e.g: simply cmd+c/v hex colors or font names and sizes? less work for designer, and for me it&rsquo;s way more elegant and faster to implement.</p>
+
+<p><b>INTERFACE BUILDER</b></p>
+
+<p>Long time ago there was an argument if it&rsquo;s really useful and safe to use IB but today when we have autolayout ? As George Carlin say&rsquo;s - &ldquo;It&rsquo;s bullshit and it&rsquo;s bad for you&rdquo; and i cannot agree more. User IB as much as possible!. There are now so many COOL features that may dramatically speed up your development and decrease lines of code. And as we know less code - better to maintain, debug and of course less bugs. Some features that can save a lot of our work:</p>
+
+<p><code>IB_DESIGNABLE</code> - new feature that allow you to see a preview of your custom control in IB that&rsquo;s a game changer because it&rsquo;s allow you to see some of your work without even opening app on device or simulator.</p>
+
+<p>Take a look IB without designable:</p>
+
+<p><img class="center" src="/assets/images/no_designable.png" width="800"></p>
+
+<p>And with enabled designable controls preview:</p>
+
+<p><img class="center" src="/assets/images/designable.png" width="800"></p>
+
+<p><code>Interface Builder Preview</code> - super cool feature, and one of the most wanted from the time autolayout was introduced. Simply this allow you to see preview of your app layout on ALL selected devices. Again no need to run app and you can see if there are no glitches in your autolayout UI.</p>
+
+<p><img class="center" src="/assets/images/ib_preview.png" width="800"></p>
+
+<p><code>Assets catalog</code> - Now when we have new iPhones with @3x resolution assets catalog is only place when you can manage all of assets without getting mad. Also it allow you to FINALLY set rendering mode of asset! no more:</p>
+
+<pre><code class="objc">imageView.image = [[UIImage imageNamed:@"myasset"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+</code></pre>
+
+<p>Also allow you to manage <code>Size Classes</code> And here how it looks:</p>
+
+<p><img class="center" src="/assets/images/image_assets.png" width="800"></p>
+
+<p>Those are one of most used things that will save your day many times. There is of course a lot more but it&rsquo;s time to get to our main topic which is:</p>
+
+<p><b>ANIMATIONS</b></p>
+
+<p>Without them your app will be at least average if you really want to make your app look epic put as much animations as you can, your app need to live otherwise it will die in all those apps that spam appstore day by day</p>
+
+<p><img class="center" src="/assets/images/deal_with_it.gif" width="800"></p>
+
+<p>But before we start, you need to learn how to &ldquo;see&rdquo; animations in your app. I&rsquo;m always doing sketches so I can visualize how may app will behave like this one:</p>
+
+<p><img class="center" src="/assets/images/sketch_app.jpg" width="800"></p>
+
+<p>If you are lucky and you have designer he can always do it for you or even make some animation using AfterEffects and export to gif or some video. It&rsquo;s always a good thing to have something like this so you will not lose the &ldquo;idea&rdquo; of animation. Ok enough of talking time for some code!</p>
+
+<p>First let&rsquo;s talk how I did this idle spinner animation when app is not used. I saw this kind of loading spinner in some games and I decided to do the same here so app give that feeling of &ldquo;doing something&rdquo; while not used. So first I put some multiple <code>UIView</code> in my container as the each one of them will be animated using simple rotation of it&rsquo;s center</p>
+
+<p>Drawing:</p>
+
+<pre><code class="objc">- (void)drawRect:(CGRect)rect {
+
+    //get current context
+    CGContextRef context = UIGraphicsGetCurrentContext();
+
+    //this code moves our circle along view bounds if you decide not to center it.
+    CGContextSaveGState(context);
+    CGContextTranslateCTM(context, self.offsetX, self.offsetY);
+
+    //now create a path that will be used for drawing
+    CGMutablePathRef arc = CGPathCreateMutable();
+
+    //this function retuns path representing arc (piece of pie)
+    CGPathAddArc(arc, NULL,
+                 rect.size.width * 0.5f, rect.size.height * 0.5f,
+                 self.radius,
+                 degreeToRadian(self.startAngle), //see we conver deegree to radians here by deg*M_PI/180.0
+                 degreeToRadian(self.endAngle),
+                 YES); //clock wise
+
+    //now we need to stroke our arc 
+    CGPathRef strokedArc =
+    CGPathCreateCopyByStrokingPath(arc, NULL,
+                                   self.lineWidth,
+                                   kCGLineCapButt,
+                                   kCGLineJoinMiter,
+                                   10.0f);
+
+    //apply path for drawing
+    CGContextAddPath(context, strokedArc);
+    //setup colors
+    CGContextSetFillColorWithColor(context, self.fillColor.CGColor);
+    CGContextSetStrokeColorWithColor(context, self.strokeColor.CGColor);
+    //and draw
+    CGContextDrawPath(context, kCGPathFillStroke);
+    CGContextRestoreGState(context);
+}
+</code></pre>
+
+<p>This will give us nicely done arcs in our IB of course we are declaring our view as:</p>
+
+<pre><code class="objc">@import UIKit;
+
+IB_DESIGNABLE
+
+@interface ADVArcRotationView : UIView
+
+@property (nonatomic) IBInspectable CGFloat offsetX;
+@property (nonatomic) IBInspectable CGFloat offsetY;
+@property (nonatomic) IBInspectable CGFloat radius;
+
+@property (nonatomic) IBInspectable UIColor *fillColor;
+@property (nonatomic) IBInspectable UIColor *strokeColor;
+@property (nonatomic) IBInspectable CGFloat lineWidth;
+
+@property (nonatomic) IBInspectable CGFloat startAngle;
+@property (nonatomic) IBInspectable CGFloat endAngle;
+
+@end
+</code></pre>
+
+<p>So we can see live preview in Interface builder, see <code>IBInspectable</code> ? this allow you to declare variables available from interface builder so you can modify it look without compiling.</p>
+
+<p>Ok so how to animate the views ? there are actually two ways of doing that one by using <code>UIView animateWithDuration</code> or <code>CABasicAnimation</code> from Core Animation. I want to focus today mostly on Core Animation so i will show some simple UIView animations later on, but for now a bit about Core Animation. It&rsquo;s one of the low level frameworks provided by Apple allowing to create animations that can be apply directly on views layers, notice that we are not working on UIView anymore we are going deeper by playing with UIView layer property. <code>CALayer</code> is a lightweight entity used to acutally do drawing for you under the hood. Layer can have sublayers so it’s pretty similar to working with views. The main difference is that you can do some animated drawing which can&rsquo;t be achieved by using UIView  <code>drawRect:</code> method. You can even create your own fully custom layers. Of course there is some magic going under the hood for you. If you read documentation you will notice there is something called presentationLayer this guy hold current view state while animating and this may be useful in some cases. This is also a good moment to tell why iOS works so damn fast, and why doing this kind of animations on Android make some of developers working on it commit suicide; the answer is simple:</p>
+
+<p><b>iOS perform hardware accelerated animations</b> - what does this mean? iOS rendering pipeline is based on OpenGL and its directly connected to whole API (right now they probably doing some Metal SDK transitions to speed up even more some stuff) That&rsquo;s why every thing animated in iOS works so smooth.</p>
+
+<p>Ok time to explain how do we actually animate idle arcs:</p>
+
+<pre><code class="objc">
+//collect views from IB using collections
+
+@interface ADVIdleViewController ()
+
+@property (strong, nonatomic) IBOutletCollection(ADVArcRotationView) NSArray *arcViews;
+
+@end
+</code></pre>
+
+<p>Creating rotation animation:</p>
+
+<pre><code class="objc">-(CAKeyframeAnimation *)generateLayerAnimationWithDuration:(CGFloat)duration
+                                                   reverse:(BOOL)reverse
+{
+    //create animation that will modify "transform" property of layer iOS allow to use some build in keywords
+    //like "rotation" or "scale" to build for us whole functions that will interpolate values.
+
+    CAKeyframeAnimation *rotationAnimation = [CAKeyframeAnimation animationWithKeyPath:@"transform.rotation"];
+
+    NSArray *rotationValues = reverse ? @[@(2.0f * M_PI), @0.0f] : @[@0.0f, @(2.0f * M_PI)];
+
+    [rotationAnimation setValues:rotationValues];
+
+    rotationAnimation.repeatCount = arc4random() % kADVMaximumAnimationRepeatCount;
+    //by default animation is removed from layer after finish but we want actually want to keep it so we can find it later.
+    rotationAnimation.removedOnCompletion = NO; 
+    rotationAnimation.duration = duration;
+    rotationAnimation.delegate = self;
+
+    return rotationAnimation;
+}
+</code></pre>
+
+<p>Applying animation to particular view layer:</p>
+
+<pre><code class="objc">
+- (void)setupArcsRoationAnimationsd
+{
+    for (NSUInteger i = 0; i&lt;self.arcViews.count; i++) {
+
+        UIView *v = self.arcViews[i];
+
+        CAKeyframeAnimation *anim = [self generateLayerAnimationWithDuration: (arc4random() % 5) + kADVMinimumAnimationDuration
+                                                                     reverse: ((i == 3 || i == 5))];
+
+        [v.layer addAnimation:anim
+                       forKey:kADVAnimationKey];
+    }
+}
+</code></pre>
+
+<p>Ok now because we set us as delegate to animation we have to handle it in this function:</p>
+
+<pre><code class="objc">//get notified that animations is finished
+- (void)animationDidStop:(CAAnimation *)anim
+                finished:(BOOL)flag
+{
+
+    //loop by all views that are attached
+    for (UIView *v in self.arcViews) {
+
+        //and get animation for this view layer
+        CAAnimation *current = [v.layer animationForKey:kADVAnimationKey];
+
+        //check if the animation that just complete is the one of the view we are looking for
+        if (current == anim) {
+
+            //if so now we can remove it 
+            [v.layer removeAnimationForKey:kADVAnimationKey];
+
+            //and setup new one so the whole view will endlessly animates
+            CAKeyframeAnimation *anim = [self generateLayerAnimationWithDuration: (arc4random() % 5) + kADVMinimumAnimationDuration
+                                                                         reverse: (arc4random() % 2) ];
+
+            [v.layer addAnimation:anim
+                           forKey:kADVAnimationKey];
+
+            break;
+        }
+    }
+}
+</code></pre>
+
+<p>For example you can also use regular UIView animation that&rsquo;s how I manage to do this magic echo impulse ring that blinks all the time:</p>
+
+<pre><code class="objc">
+//get view from IB
+@property (weak, nonatomic) IBOutlet ADVArcRotationView *impulseView;
+
+//animate using regular UIView animation
+
+- (void)setupImpulseViewAnimation
+{
+    //break retain cycle, and safeguard for view release
+    __weak __typeof__(self) weakSelf = self;
+
+    //initial setup hiden super small view
+    self.impulseView.alpha = 0.0f;
+    self.impulseView.transform = CGAffineTransformMakeScale(0.0001, 0.0001);
+
+    //firts part
+    [UIView animateWithDuration:0.7
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveLinear
+                     animations:^{
+
+                         //scale it to 80% of size and at this time make it visible 
+                         weakSelf.impulseView.alpha = 1.0;
+                         weakSelf.impulseView.transform = CGAffineTransformMakeScale(0.8, 0.8);
+
+                     } completion:^(BOOL finished) {
+
+                         //second part
+                         [UIView animateWithDuration:0.3
+                                               delay:0.0
+                                             options:UIViewAnimationOptionCurveLinear
+                                          animations:^{
+
+                                              //by the rest time fade it out again and scale to 100% of size
+                                              weakSelf.impulseView.alpha = 0.0f;
+                                              weakSelf.impulseView.transform = CGAffineTransformMakeScale(1.0, 1.0);
+
+                                          } completion:^(BOOL finished) {
+
+                                              //recursive animation calling itself
+                                              [weakSelf setupImpulseViewAnimation];
+                                          }];
+                     }];
+
+}
+</code></pre>
+
+<p>Doing heartbeat animation is also very simple again we will use <code>CABasicAnimation</code> and the <code>autoreverses</code> property of animation. This will simply reverse animation to its original state automatically.</p>
+
+<pre><code class="objc">- (void)applyHeartBeatAnimation:(BOOL)apply
+{
+    if (!apply) {
+
+        [self.layer removeAnimationForKey:kADVHeartBeatAnimationKey];
+
+        return;
+    }
+
+    CABasicAnimation *heartBeatAnimation;
+
+    heartBeatAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    heartBeatAnimation.duration = 0.5;
+    heartBeatAnimation.repeatCount = INFINITY;
+    heartBeatAnimation.autoreverses = YES;
+    heartBeatAnimation.fromValue = @1.0f;
+    heartBeatAnimation.toValue = @1.15f;
+
+    [self.layer addAnimation:heartBeatAnimation
+                      forKey:kADVHeartBeatAnimationKey];
+}
+</code></pre>
+
+<p>When it comes to simple animations that gives wow effect, the one of the most important places in your app is it&rsquo;s menu.
+If you build cool and fancy menu users will way more gladly use it even without doing anything just to play with it.</p>
+
+<p>My menu uses new iOS7 feature: animation with spring to be more precise:</p>
+
+<pre><code class="objc">+ (void)animateWithDuration:(NSTimeInterval)duration 
+                      delay:(NSTimeInterval)delay 
+     usingSpringWithDamping:(CGFloat)dampingRatio 
+      initialSpringVelocity:(CGFloat)velocity 
+                    options:(UIViewAnimationOptions)options 
+                 animations:(void (^)(void))animations 
+                 completion:(void (^)(BOOL finished))completion;
+</code></pre>
+
+<p>This animations apply spring effect to your animation which in many cases looks super fancy and cool and you can combine this with any other animation it&rsquo;s just something you get for free so why not to use it? the code:</p>
+
+<pre><code class="objc">- (void)openActionMenu
+{
+    //reset buttons positions
+    for (UIButton *btn in self.menuButtons) {
+
+        btn.center = self.view.center;
+    }
+
+    //if you need proper order of objects from IB and you use OutletCollections which do not guarantee proper order
+    //you may consider of sorting them somehow in this case i simply use tag propety of view to get order i want.
+
+    NSSortDescriptor *sortDesc = [NSSortDescriptor sortDescriptorWithKey:@"tag"
+                                                               ascending:YES];
+
+    NSArray *sortedButtons = [self.menuButtons sortedArrayUsingDescriptors:@[sortDesc]];
+
+    CGFloat delay = 0.1f;
+
+    //desired buttons location along center
+    NSArray *constraintValues = @[ @[@0, @0],
+                                   @[@0, @120],
+                                   @[@(-110), @50],
+                                   @[@(-80), @(-90)],
+                                   @[@80, @(-90)],
+                                   @[@110, @50]];
+
+    for (NSUInteger i=0; i&lt;sortedButtons.count; ++i) {
+
+        UIButton *btn = sortedButtons[i];
+        NSArray *values = constraintValues[i];
+
+        //go button by button and animate alpha so they become visible in 1/4 time of animation
+        [UIView animateWithDuration:0.2
+                              delay:delay
+                            options:UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+
+                             btn.alpha = 1.0f;
+
+                         } completion:^(BOOL finished) {
+
+                         }];
+
+        //notice we can combine multiple animations to one view as long as they touch different properites
+        [UIView animateWithDuration:0.8
+                              delay:delay
+             usingSpringWithDamping:0.2
+              initialSpringVelocity:0.05
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+
+                             //apply new position
+                             CGPoint newCenter = btn.center;
+                             newCenter.x += [values[0] floatValue];
+                             newCenter.y += [values[1] floatValue];
+
+                             btn.center = newCenter;
+
+                         } completion:^(BOOL finished) {
+
+                         }];
+
+        delay += 0.1;
+    }
+}
+</code></pre>
+
+<p>Ok we are done with those easy ones now time for some tricky animations. We left two of them, the hole animation that make record button empty inside and arc animation that represent record time animation. (e.g: we get user desired time of recording and he need to fit this time before it run out.)</p>
+
+<p>Each <code>CALayer</code> contains mask property which tells him what could be actually visible. So simply whatever shape you will apply on your layer using this mask will become transparent. In our case we actually need the opposite we want to tell our view what we want to keep not what we want to cut.</p>
+
+<pre><code class="objc">
+//mask whole view so at this point it will be fully transparent
+UIBezierPath *basePath = [UIBezierPath bezierPathWithRect:realBounds];
+
+//now prepare path that contain circle as a mask
+
+//empty mask path
+UIBezierPath *startPath = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(viewSize*0.5, viewSize*0.5, 0, 0)];
+
+//mask path that contains circle with 20px on each edge
+UIBezierPath *endPath = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(edgeSize, edgeSize, viewSize-edgeSize*2.0, viewSize-edgeSize*2.0)];
+
+//do outer join by applying we are cutting a hole in the original path
+[startPath appendPath:basePath];
+[endPath appendPath:basePath];
+
+//now prepare our mask layer 
+CAShapeLayer *maskLayer = [[CAShapeLayer alloc] init];
+//set it size to whole view 
+maskLayer.frame = realBounds;
+maskLayer.path = endPath.CGPath; // set fully visible path 
+maskLayer.fillRule = kCAFillRuleEvenOdd; // this is the key to enable diff cut in both paths shapes
+maskLayer.fillColor = [UIColor blackColor].CGColor;
+
+//apply mask to layer
+self.layer.mask = maskLayer; 
+</code></pre>
+
+<p>And because it is also a regular <code>CALayer</code> you can apply animation to it.</p>
+
+<pre><code class="objc">
+CABasicAnimation *maskAnimation = [CABasicAnimation animationWithKeyPath:kADVMaskAnimationKey];
+
+maskAnimation.fromValue = startPath.CGPath;
+maskAnimation.toValue = endPath.CGPath;
+maskAnimation.duration = animationDuration;
+
+[maskLayer addAnimation:maskAnimation forKey:kADVMaskAnimationKey];
+</code></pre>
+
+<p>One more thing, remember that animation apply changes to layer only while animating! if you for example set your layer scale to 0.5 and animate from 0.5 to 1.0 it will go back to 0.5 after animation so your layer need to set proper final value before animating. It&rsquo;s super important so keep this in mind.</p>
+
+<p><b>Custom CALayer</b></p>
+
+<p>My Pie Chart animation inside drilled button is done using custom build <code>CALayer</code> i had to do it because regular <code>CALayer</code> do not allow to animate Bezier path simply, it will interpolate value instead of redrawing it properly. You can find some detailed info about how it is done on <a href="http://blog.pixelingene.com/2012/02/animating-pie-slices-using-a-custom-calayer/">Pixel-in-Gene Blog</a> but the basic idea is to subclass <code>CALayer</code> and overwrite <code>-(void)drawInContext:(CGContextRef)ctx</code> which is called every time property changes. Here is detailed custom pie chart implementation:</p>
+
+<pre><code class="objc">- (void)drawInContext:(CGContextRef)ctx
+{
+
+    CGPoint center = CGPointMake(self.bounds.size.width*0.5, self.bounds.size.height*0.5);
+    CGFloat radius = fminf(center.x, center.y);
+    CGContextBeginPath(ctx);
+    CGContextMoveToPoint(ctx, center.x, center.y);
+    CGPoint p1 = CGPointMake(center.x + radius * cosf(self.startAngle), center.y + radius * sinf(self.startAngle));
+    CGContextAddLineToPoint(ctx, p1.x, p1.y);
+
+    BOOL clockwise = self.startAngle &gt; self.endAngle;
+
+    CGContextAddArc(ctx, center.x, center.y, radius, self.startAngle, self.endAngle, clockwise);
+    CGContextClosePath(ctx);
+
+    CGContextSetFillColorWithColor(ctx, self.fillColor);
+    CGContextSetStrokeColorWithColor(ctx, [UIColor clearColor].CGColor);
+    CGContextSetLineWidth(ctx, 0);
+    CGContextDrawPath(ctx, kCGPathFillStroke);
+}
+</code></pre>
+
+<p>As you can see it&rsquo;s similar to regular <code>drawRect:</code> call but in <code>CALayer</code> we need to tell it actually when to redraw. We do this by overwriting <code>+ (BOOL)needsDisplayForKey:(NSString *)key;</code> method in our custom class. This will tell the layer to redraw every time our color or angle changes even when animated.</p>
+
+<p>Another thing that is done here is automatic animation generation for every property we have. To do this simply overwrite <code>- (id<CAAction>)actionForKey:(NSString *)event</code> and compare the event key with our property by using <code>[event isEqualToString:NSStringFromSelector(@selector(propertyToCompare))]</code> and fire up animation if we detect property that we want to animate.</p>
+
+<p>One more thing&hellip; see the <code>@dynamic</code> keyword on properties instead of automatically generated <code>@synthesize</code> we do this because CoreAnimation will create sub values and dynamically update original one while animating the property. Basically if you used CoreData you should be familiar with it, if not the simplest explanation to <code>@dynamic</code> is that by using it we tell compiler that our <b>setter</b> and <b>getter</b> will be generated outside the class and can be dynamically created instead of static compile time code generation in class.</p>
+
+<p>And that&rsquo;s all for today, as always <a href="https://github.com/noxytrux/AdvancedCoreAnimations">source code</a> available on my github. Next time i will use this code to finish this app using <code>Core Audio</code> as another blog topic.</p>
+]]></content>
+  </entry>
+  
+</feed>
